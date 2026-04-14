@@ -1,4 +1,5 @@
 const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
+const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-4o-mini';
 
 function buildSystemPrompt(level) {
   return `You are a patient English tutor. Your goal is to have a natural conversation at ${level}.
@@ -25,16 +26,23 @@ export default async function handler(req, res) {
   }
 
   const safeLevel = ['A1', 'A2', 'B1', 'B2'].includes(level) ? level : 'B1';
+  const apiKey = process.env.OPENAI_API_KEY;
+
+  if (!apiKey) {
+    return res
+      .status(500)
+      .json({ error: 'OPENAI_API_KEY is missing in Vercel environment variables.' });
+  }
 
   try {
     const apiRes = await fetch(OPENAI_API_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`
+        Authorization: `Bearer ${apiKey}`
       },
       body: JSON.stringify({
-        model: 'gpt-4o',
+        model: OPENAI_MODEL,
         temperature: 0.7,
         messages: [
           { role: 'system', content: buildSystemPrompt(safeLevel) },
@@ -45,11 +53,19 @@ export default async function handler(req, res) {
 
     if (!apiRes.ok) {
       const errorText = await apiRes.text();
-      return res.status(apiRes.status).json({ error: errorText });
+      return res.status(apiRes.status).json({
+        error: `OpenAI API error (${apiRes.status}): ${errorText}`
+      });
     }
 
     const data = await apiRes.json();
     const reply = data?.choices?.[0]?.message?.content?.trim();
+
+    if (!reply) {
+      return res.status(502).json({
+        error: 'OpenAI response did not include a text reply.'
+      });
+    }
 
     return res.status(200).json({ reply });
   } catch (error) {

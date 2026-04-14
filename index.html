@@ -85,11 +85,10 @@
             body: JSON.stringify({ text: userText, level })
           });
 
-          if (!res.ok) {
-            throw new Error(`Server returned ${res.status}`);
-          }
-
           const data = await res.json();
+          if (!res.ok) {
+            throw new Error(data.error || `Server returned ${res.status}`);
+          }
           const tutorReply = data.reply || 'Sorry, I could not generate a response.';
           appendMessage('Tutor', tutorReply);
           speakText(tutorReply.replace(/\[[^\]]*\]/g, '').trim());
@@ -97,7 +96,7 @@
         } catch (err) {
           console.error(err);
           statusEl.textContent = 'Error contacting tutor API.';
-          appendMessage('Tutor', 'I had a connection problem. Please try again.');
+          appendMessage('Tutor', `Connection/API error: ${err.message}`);
         }
       }
 
