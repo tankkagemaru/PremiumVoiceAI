@@ -70,28 +70,32 @@
       let isRecording = false;
       let voiceEnabled = true;
       let currentAudio;
+      const conversationHistory = [];
 
       function appendMessage(role, text) {
         const row = document.createElement('div');
         row.className = `text-sm leading-relaxed p-2 rounded-lg ${
           role === 'You' ? 'bg-blue-100 text-blue-900 ml-8' : 'bg-white border border-slate-200 mr-8'
         }`;
-        row.innerHTML = `<strong>${role}:</strong> ${text}`;
+        const label = document.createElement('strong');
+        label.textContent = `${role}: `;
+        row.appendChild(label);
+        row.appendChild(document.createTextNode(text));
         chatWindow.appendChild(row);
         chatWindow.scrollTop = chatWindow.scrollHeight;
       }
 
       async function speakText(text) {
         if (!voiceEnabled) return;
-        const cleanText = text.replace(/\[[^\]]*\]/g, '').trim();
-        if (!cleanText) return;
+        const fullText = text.trim();
+        if (!fullText) return;
 
         try {
           const res = await fetch('/api/tts', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              text: cleanText,
+              text: fullText,
               voice: voiceEl.value
             })
           });
@@ -124,7 +128,11 @@
           const res = await fetch('/api/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text: userText, level })
+            body: JSON.stringify({
+              text: userText,
+              level,
+              history: conversationHistory
+            })
           });
 
           const data = await res.json();
@@ -133,6 +141,7 @@
           }
           const tutorReply = data.reply || 'Sorry, I could not generate a response.';
           appendMessage('Tutor', tutorReply);
+          conversationHistory.push({ role: 'assistant', content: tutorReply });
           await speakText(tutorReply);
           statusEl.textContent = 'Ready. Press Record and speak.';
         } catch (err) {
@@ -167,6 +176,7 @@
         recognition.onresult = (event) => {
           const transcript = event.results[0][0].transcript.trim();
           appendMessage('You', transcript);
+          conversationHistory.push({ role: 'user', content: transcript });
           sendToTutor(transcript);
         };
 
