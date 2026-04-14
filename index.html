@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Voice ESL Tutor Widget</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="bg-slate-100 min-h-screen flex items-center justify-center p-4">
+    <div class="w-full max-w-md bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
+      <div class="px-4 py-3 bg-slate-900 text-white flex items-center justify-between">
+        <h1 class="text-sm font-semibold tracking-wide">🎙️ Voice English Tutor</h1>
+        <span class="text-xs bg-slate-700 px-2 py-1 rounded-full">PoC Widget</span>
+      </div>
+
+      <div class="p-4 space-y-4">
+        <div class="flex items-center gap-2">
+          <label for="level" class="text-sm font-medium text-slate-700">Level:</label>
+          <select id="level" class="border border-slate-300 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="A1">A1</option>
+            <option value="A2">A2</option>
+            <option value="B1" selected>B1</option>
+            <option value="B2">B2</option>
+          </select>
+          <button id="speakToggle" class="ml-auto text-xs rounded-lg px-3 py-1.5 bg-emerald-100 text-emerald-800 hover:bg-emerald-200">
+            Voice On
+          </button>
+        </div>
+        <div class="flex items-center gap-2">
+          <label for="voice" class="text-sm font-medium text-slate-700">Voice:</label>
+          <select id="voice" class="border border-slate-300 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="alloy">alloy</option>
+            <option value="ash">ash</option>
+            <option value="ballad">ballad</option>
+            <option value="coral">coral</option>
+            <option value="echo">echo</option>
+            <option value="fable">fable</option>
+            <option value="onyx">onyx</option>
+            <option value="nova">nova</option>
+            <option value="sage">sage</option>
+            <option value="shimmer">shimmer</option>
+          </select>
+        </div>
+
+        <div id="status" class="text-xs text-slate-500">Ready. Press Record and speak.</div>
+
+        <div id="chatWindow" class="h-72 overflow-y-auto border border-slate-200 rounded-xl p-3 bg-slate-50 space-y-3" aria-live="polite"></div>
+
+        <div class="flex items-center gap-2">
+          <button id="recordBtn" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded-xl transition">
+            ⏺️ Record
+          </button>
+          <button id="stopBtn" class="px-3 py-2 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-100">
+            Stop
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const recordBtn = document.getElementById('recordBtn');
+      const stopBtn = document.getElementById('stopBtn');
+      const statusEl = document.getElementById('status');
+      const chatWindow = document.getElementById('chatWindow');
+      const levelEl = document.getElementById('level');
+      const voiceEl = document.getElementById('voice');
+      const speakToggle = document.getElementById('speakToggle');
+
+      let recognition;
+      let isRecording = false;
+      let voiceEnabled = true;
+      let currentAudio;
+      const conversationHistory = [];
+
+      function appendMessage(role, text) {
+        const row = document.createElement('div');
+        row.className = `text-sm leading-relaxed p-2 rounded-lg ${
+          role === 'You' ? 'bg-blue-100 text-blue-900 ml-8' : 'bg-white border border-slate-200 mr-8'
+        }`;
+        const label = document.createElement('strong');
+        label.textContent = `${role}: `;
+        row.appendChild(label);
+        row.appendChild(document.createTextNode(text));
+        chatWindow.appendChild(row);
+        chatWindow.scrollTop = chatWindow.scrollHeight;
+      }
+
+      async function speakText(text) {
+        if (!voiceEnabled) return;
+        const fullText = text.trim();
+        if (!fullText) return;
+
+        try {
+          const res = await fetch('/api/tts', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              text: fullText,
+              voice: voiceEl.value
+            })
+          });
+
+          if (!res.ok) {
+            const data = await res.json();
+            throw new Error(data.error || `TTS failed (${res.status})`);
+          }
+
+          const audioBlob = await res.blob();
+          const audioUrl = URL.createObjectURL(audioBlob);
+
+          if (currentAudio) {
+            currentAudio.pause();
+          }
+          currentAudio = new Audio(audioUrl);
+          currentAudio.onended = () => URL.revokeObjectURL(audioUrl);
+          currentAudio.play();
+        } catch (err) {
+          console.error('TTS error:', err);
+          appendMessage('Tutor', `[Audio unavailable: ${err.message}]`);
+        }
+      }
+
+      async function sendToTutor(userText) {
+        const level = levelEl.value;
+        statusEl.textContent = 'Thinking...';
+
+        try {
+          const res = await fetch('/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              text: userText,
+              level,
+              history: conversationHistory
+            })
+          });
+
+          const data = await res.json();
+          if (!res.ok) {
+            throw new Error(data.error || `Server returned ${res.status}`);
+          }
+          const tutorReply = data.reply || 'Sorry, I could not generate a response.';
+          appendMessage('Tutor', tutorReply);
+          conversationHistory.push({ role: 'assistant', content: tutorReply });
+          await speakText(tutorReply);
+          statusEl.textContent = 'Ready. Press Record and speak.';
+        } catch (err) {
+          console.error(err);
+          statusEl.textContent = 'Error contacting tutor API.';
+          appendMessage('Tutor', `Connection/API error: ${err.message}`);
+        }
+      }
+
+      function initSpeechRecognition() {
+        const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SR) {
+          statusEl.textContent = 'Speech recognition not supported in this browser.';
+          recordBtn.disabled = true;
+          stopBtn.disabled = true;
+          return;
+        }
+
+        recognition = new SR();
+        recognition.lang = 'en-US';
+        recognition.interimResults = false;
+        recognition.continuous = false;
+
+        recognition.onstart = () => {
+          isRecording = true;
+          statusEl.textContent = 'Listening...';
+          recordBtn.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+          recordBtn.classList.add('bg-red-600', 'hover:bg-red-700');
+          recordBtn.textContent = '🔴 Recording';
+        };
+
+        recognition.onresult = (event) => {
+          const transcript = event.results[0][0].transcript.trim();
+          appendMessage('You', transcript);
+          conversationHistory.push({ role: 'user', content: transcript });
+          sendToTutor(transcript);
+        };
+
+        recognition.onerror = (event) => {
+          statusEl.textContent = `Speech error: ${event.error}`;
+        };
+
+        recognition.onend = () => {
+          isRecording = false;
+          recordBtn.classList.remove('bg-red-600', 'hover:bg-red-700');
+          recordBtn.classList.add('bg-blue-600', 'hover:bg-blue-700');
+          recordBtn.textContent = '⏺️ Record';
+        };
+      }
+
+      recordBtn.addEventListener('click', () => {
+        if (!recognition) return;
+        if (isRecording) {
+          recognition.stop();
+          return;
+        }
+        recognition.start();
+      });
+
+      stopBtn.addEventListener('click', () => {
+        if (recognition && isRecording) {
+          recognition.stop();
+          statusEl.textContent = 'Stopped.';
+        }
+      });
+
+      speakToggle.addEventListener('click', () => {
+        voiceEnabled = !voiceEnabled;
+        speakToggle.textContent = voiceEnabled ? 'Voice On' : 'Voice Off';
+        speakToggle.className = voiceEnabled
+          ? 'ml-auto text-xs rounded-lg px-3 py-1.5 bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
+          : 'ml-auto text-xs rounded-lg px-3 py-1.5 bg-slate-200 text-slate-700 hover:bg-slate-300';
+      });
+
+      initSpeechRecognition();
+      appendMessage('Tutor', 'Hello! I am your English tutor. Press Record and tell me about your day.');
+    </script>
+  </body>
+</html>
