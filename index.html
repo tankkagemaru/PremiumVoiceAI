@@ -26,6 +26,21 @@
             Voice On
           </button>
         </div>
+        <div class="flex items-center gap-2">
+          <label for="voice" class="text-sm font-medium text-slate-700">Voice:</label>
+          <select id="voice" class="border border-slate-300 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="alloy">alloy</option>
+            <option value="ash">ash</option>
+            <option value="ballad">ballad</option>
+            <option value="coral">coral</option>
+            <option value="echo">echo</option>
+            <option value="fable">fable</option>
+            <option value="onyx">onyx</option>
+            <option value="nova">nova</option>
+            <option value="sage">sage</option>
+            <option value="shimmer">shimmer</option>
+          </select>
+        </div>
 
         <div id="status" class="text-xs text-slate-500">Ready. Press Record and speak.</div>
 
@@ -48,11 +63,13 @@
       const statusEl = document.getElementById('status');
       const chatWindow = document.getElementById('chatWindow');
       const levelEl = document.getElementById('level');
+      const voiceEl = document.getElementById('voice');
       const speakToggle = document.getElementById('speakToggle');
 
       let recognition;
       let isRecording = false;
       let voiceEnabled = true;
+      let currentAudio;
 
       function appendMessage(role, text) {
         const row = document.createElement('div');
@@ -64,14 +81,39 @@
         chatWindow.scrollTop = chatWindow.scrollHeight;
       }
 
-      function speakText(text) {
-        if (!voiceEnabled || !window.speechSynthesis) return;
-        window.speechSynthesis.cancel();
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.rate = 0.95;
-        utterance.pitch = 1;
-        utterance.lang = 'en-US';
-        window.speechSynthesis.speak(utterance);
+      async function speakText(text) {
+        if (!voiceEnabled) return;
+        const cleanText = text.replace(/\[[^\]]*\]/g, '').trim();
+        if (!cleanText) return;
+
+        try {
+          const res = await fetch('/api/tts', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              text: cleanText,
+              voice: voiceEl.value
+            })
+          });
+
+          if (!res.ok) {
+            const data = await res.json();
+            throw new Error(data.error || `TTS failed (${res.status})`);
+          }
+
+          const audioBlob = await res.blob();
+          const audioUrl = URL.createObjectURL(audioBlob);
+
+          if (currentAudio) {
+            currentAudio.pause();
+          }
+          currentAudio = new Audio(audioUrl);
+          currentAudio.onended = () => URL.revokeObjectURL(audioUrl);
+          currentAudio.play();
+        } catch (err) {
+          console.error('TTS error:', err);
+          appendMessage('Tutor', `[Audio unavailable: ${err.message}]`);
+        }
       }
 
       async function sendToTutor(userText) {
@@ -91,7 +133,7 @@
           }
           const tutorReply = data.reply || 'Sorry, I could not generate a response.';
           appendMessage('Tutor', tutorReply);
-          speakText(tutorReply.replace(/\[[^\]]*\]/g, '').trim());
+          await speakText(tutorReply);
           statusEl.textContent = 'Ready. Press Record and speak.';
         } catch (err) {
           console.error(err);
