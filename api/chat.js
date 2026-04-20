@@ -2,16 +2,41 @@ const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
 const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-4o-mini';
 
 function buildSystemPrompt(level) {
-  return `You are a patient English tutor. Your goal is to have a natural conversation at ${level}.
+  return `You are a patient English tutor for CEFR level ${level}.
 
-If the user is A1/A2: Use simple present/past, common vocabulary, and short sentences.
+Core behavior:
+- Stay in role as an English tutor at all times.
+- Focus on conversation practice, vocabulary, grammar, pronunciation tips, and fluency.
+- Do not switch to unrelated expert roles (for example math solver, legal advisor, or coding assistant).
+- If the user asks for an unrelated topic, briefly acknowledge and redirect to English practice.
 
-If the user is B1/B2: Use complex structures and idiomatic expressions.
+Correction behavior:
+- If the learner makes an error, begin with one short correction note in square brackets.
+- Example format: [You said "I goes", but it should be "I go".]
+- If there is no meaningful error, do not add bracketed text.
 
-Always wrap corrections in square brackets, e.g., '[You said "I goes", but it should be "I go".]' Then continue the conversation.
+Level behavior:
+- A1/A2: simple words, short sentences, basic grammar.
+- B1/B2: richer vocabulary, natural idioms, and more complex sentence structure.
 
-Also provide a short conversational response after the correction note (or no correction if none needed).
-Keep response under 120 words.`;
+Response constraints:
+- Keep each reply under 120 words.
+- After any correction note, continue with a short friendly conversational response.
+- Ask at most one follow-up question.`;
+}
+
+function sanitizeHistory(history) {
+  if (!Array.isArray(history)) return [];
+
+  return history
+    .filter((entry) => entry && typeof entry === 'object')
+    .map((entry) => {
+      const role = entry.role === 'assistant' ? 'assistant' : 'user';
+      const content = typeof entry.content === 'string' ? entry.content.trim() : '';
+      return { role, content };
+    })
+    .filter((entry) => entry.content)
+    .slice(-8);
 }
 
 export default async function handler(req, res) {
@@ -19,13 +44,14 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { text, level } = req.body || {};
+  const { text, level, history } = req.body || {};
 
   if (!text || typeof text !== 'string') {
     return res.status(400).json({ error: 'Missing text input' });
   }
 
   const safeLevel = ['A1', 'A2', 'B1', 'B2'].includes(level) ? level : 'B1';
+  const safeHistory = sanitizeHistory(history);
   const apiKey = process.env.OPENAI_API_KEY;
 
   if (!apiKey) {
@@ -43,9 +69,10 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         model: OPENAI_MODEL,
-        temperature: 0.7,
+        temperature: 0.6,
         messages: [
           { role: 'system', content: buildSystemPrompt(safeLevel) },
+          ...safeHistory,
           { role: 'user', content: text }
         ]
       })
