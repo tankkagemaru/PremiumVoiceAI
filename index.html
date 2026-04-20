@@ -153,6 +153,34 @@
       let currentAudio;
       const conversationHistory = [];
 
+      function escapeHtml(text) {
+        return text
+          .replaceAll('&', '&amp;')
+          .replaceAll('<', '&lt;')
+          .replaceAll('>', '&gt;')
+          .replaceAll('"', '&quot;')
+          .replaceAll("'", '&#39;');
+      }
+
+      function formatSimpleMarkdown(text) {
+        const escaped = escapeHtml(text);
+        return escaped
+          .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+          .replace(/\*(.+?)\*/g, '<em>$1</em>')
+          .replace(/\n/g, '<br>');
+      }
+
+      function splitTutorReply(text) {
+        const leadingCorrection = text.match(/^\s*\[([^\]]+)\]\s*/);
+        if (!leadingCorrection) {
+          return { correction: '', main: text.trim() };
+        }
+
+        const correction = leadingCorrection[1].trim();
+        const main = text.replace(leadingCorrection[0], '').trim();
+        return { correction, main };
+      }
+
       function appendMessage(role, text) {
         const row = document.createElement('div');
         row.className = `text-sm leading-relaxed p-2 rounded-lg ${
@@ -160,7 +188,20 @@
             ? 'bg-red-100 text-red-900 ml-8 border border-red-200'
             : 'bg-white border border-red-100 mr-8'
         }`;
-        row.innerHTML = `<strong>${role}:</strong> ${text}`;
+
+        if (role === 'Tutor') {
+          const { correction, main } = splitTutorReply(text);
+          const correctionBlock = correction
+            ? `<p class="mb-1 text-red-700 italic bg-red-50 border border-red-100 rounded px-2 py-1"><em>${escapeHtml(
+                correction
+              )}</em></p>`
+            : '';
+          const mainBlock = `<p><strong>Tutor:</strong> ${formatSimpleMarkdown(main || text)}</p>`;
+          row.innerHTML = `${correctionBlock}${mainBlock}`;
+        } else {
+          row.innerHTML = `<strong>${role}:</strong> ${escapeHtml(text)}`;
+        }
+
         chatWindow.appendChild(row);
         chatWindow.scrollTop = chatWindow.scrollHeight;
       }
