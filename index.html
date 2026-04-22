@@ -122,6 +122,11 @@
             class="hidden flex-1 min-w-52 border border-red-200 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-red-400"
           />
         </div>
+        <div id="modeHelp" class="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+          <strong>Conversation mode:</strong> open speaking practice with grammar/vocabulary coaching.
+          <br />
+          <strong>Word Speaking Tutor mode:</strong> focused pronunciation drills on selected words.
+        </div>
 
         <div id="status" class="text-xs text-slate-500">Ready. Press Record and speak.</div>
 
@@ -152,6 +157,7 @@
       const speakToggle = document.getElementById('speakToggle');
       const voiceRing = document.getElementById('voiceRing');
       const voiceBars = document.getElementById('voiceBars');
+      const modeHelpEl = document.getElementById('modeHelp');
       const AVAILABLE_VOICES = ['alloy', 'ash', 'ballad', 'coral', 'echo', 'fable', 'onyx', 'nova', 'sage', 'shimmer'];
       const sessionVoice = AVAILABLE_VOICES[Math.floor(Math.random() * AVAILABLE_VOICES.length)];
 
@@ -159,6 +165,7 @@
       let isRecording = false;
       let voiceEnabled = true;
       let currentAudio;
+      let lastSpeechConfidence = null;
       const conversationHistory = [];
 
       function escapeHtml(text) {
@@ -298,6 +305,7 @@
               level,
               mode,
               words,
+              speechMeta: { confidence: lastSpeechConfidence },
               history: conversationHistory
             })
           });
@@ -342,9 +350,15 @@
         };
 
         recognition.onresult = (event) => {
-          const transcript = event.results[0][0].transcript.trim();
+          const primaryResult = event.results[0][0];
+          const transcript = primaryResult.transcript.trim();
+          const confidenceValue = typeof primaryResult.confidence === 'number' ? primaryResult.confidence : null;
+          lastSpeechConfidence = confidenceValue;
           appendMessage('You', transcript);
           pushHistory('user', transcript);
+          if (typeof confidenceValue === 'number' && confidenceValue < 0.72) {
+            statusEl.textContent = `Heard with low confidence (${Math.round(confidenceValue * 100)}%). Tutor will verify pronunciation.`;
+          }
           sendToTutor(transcript);
         };
 
@@ -393,6 +407,9 @@
       modeEl.addEventListener('change', () => {
         const isWordMode = modeEl.value === 'word';
         wordListEl.classList.toggle('hidden', !isWordMode);
+        modeHelpEl.innerHTML = isWordMode
+          ? '<strong>Word Speaking Tutor mode:</strong> give a short word list and practice pronunciation accuracy, stress, and clear repetition.'
+          : '<strong>Conversation mode:</strong> open speaking practice for fluency, grammar, vocabulary, and natural follow-up.';
         const modeMessage = isWordMode
           ? 'Word Tutor mode enabled. Add comma-separated words and practice pronunciation.'
           : 'Conversation mode enabled.';
