@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Voice ESL Tutor Widget</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/microsoft-cognitiveservices-speech-sdk@1/distrib/browser/microsoft.cognitiveservices.speech.sdk.bundle-min.js"></script>
     <style>
       @keyframes pulseGlow {
         0%,
@@ -123,14 +124,15 @@
           />
         </div>
 
-        <div id="status" class="text-xs text-slate-500">Ready. Press Record and speak.</div>
+        <div id="status" class="text-xs text-slate-500">Loading speech service...</div>
 
         <div id="chatWindow" class="h-72 overflow-y-auto border border-red-100 rounded-xl p-3 bg-rose-50/70 space-y-3" aria-live="polite"></div>
 
         <div class="flex items-center gap-2">
           <button
             id="recordBtn"
-            class="flex-[2] min-h-12 whitespace-nowrap bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-semibold py-3 px-4 rounded-xl transition"
+            disabled
+            class="flex-[2] min-h-12 whitespace-nowrap bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-semibold py-3 px-4 rounded-xl transition disabled:opacity-50 disabled:cursor-not-allowed"
           >
             ⏺️ Record
           </button>
@@ -155,14 +157,17 @@
       const AVAILABLE_VOICES = ['alloy', 'ash', 'ballad', 'coral', 'echo', 'fable', 'onyx', 'nova', 'sage', 'shimmer'];
       const sessionVoice = AVAILABLE_VOICES[Math.floor(Math.random() * AVAILABLE_VOICES.length)];
 
-      let recognition;
+      let azureToken = null;
+      let azureRegion = null;
+      let tokenExpiresAt = 0;
+      let activeRecognizer = null;
       let isRecording = false;
       let voiceEnabled = true;
       let currentAudio;
       const conversationHistory = [];
 
       function escapeHtml(text) {
-        return text
+        return String(text)
           .replaceAll('&', '&amp;')
           .replaceAll('<', '&lt;')
           .replaceAll('>', '&gt;')
@@ -216,6 +221,88 @@
         } else {
           row.innerHTML = `<strong>${role}:</strong> ${escapeHtml(text)}`;
         }
+
+        chatWindow.appendChild(row);
+        chatWindow.scrollTop = chatWindow.scrollHeight;
+      }
+
+      function wordClassFor(errorType, score) {
+        switch (errorType) {
+          case 'Mispronunciation':
+            return 'rounded px-1 bg-red-200 text-red-900 underline decoration-wavy decoration-red-600';
+          case 'Omission':
+            return 'rounded px-1 bg-amber-100 text-amber-900 italic line-through';
+          case 'Insertion':
+            return 'rounded px-1 bg-purple-100 text-purple-900 italic';
+          case 'UnexpectedBreak':
+          case 'MissingBreak':
+          case 'Monotone':
+            return 'rounded px-1 bg-blue-100 text-blue-900';
+          default:
+            if (typeof score === 'number') {
+              if (score < 60) return 'rounded px-1 bg-red-100 text-red-800';
+              if (score < 80) return 'rounded px-1 bg-amber-100 text-amber-800';
+            }
+            return '';
+        }
+      }
+
+      function renderAssessedWords(words) {
+        if (!Array.isArray(words) || !words.length) return '';
+        return words
+          .map((w) => {
+            const word = escapeHtml(w.Word || '');
+            const assessment = w.PronunciationAssessment || {};
+            const errorType = assessment.ErrorType || 'None';
+            const score = typeof assessment.AccuracyScore === 'number' ? assessment.AccuracyScore : null;
+            const cls = wordClassFor(errorType, score);
+            const titleParts = [];
+            if (score !== null) titleParts.push(`Accuracy ${Math.round(score)}`);
+            if (errorType && errorType !== 'None') titleParts.push(errorType);
+            const title = titleParts.length ? ` title="${escapeHtml(titleParts.join(' · '))}"` : '';
+            return `<span class="${cls}"${title}>${word}</span>`;
+          })
+          .join(' ');
+      }
+
+      function scoreChipClass(value) {
+        if (value >= 80) return 'bg-green-100 text-green-800';
+        if (value >= 60) return 'bg-amber-100 text-amber-800';
+        return 'bg-red-200 text-red-900';
+      }
+
+      function renderScoreChips(pron) {
+        const entries = [
+          ['Acc', pron.accuracyScore],
+          ['Flu', pron.fluencyScore],
+          ['Comp', pron.completenessScore],
+          ['Pros', pron.prosodyScore]
+        ];
+        const chips = entries
+          .filter(([, value]) => typeof value === 'number' && !Number.isNaN(value))
+          .map(
+            ([label, value]) =>
+              `<span class="text-[10px] font-semibold uppercase tracking-wide rounded px-1.5 py-0.5 ${scoreChipClass(
+                value
+              )}">${label} ${Math.round(value)}</span>`
+          );
+        if (!chips.length) return '';
+        return `<div class="flex flex-wrap gap-1">${chips.join('')}</div>`;
+      }
+
+      function appendUserMessage(text, pron) {
+        const row = document.createElement('div');
+        row.className =
+          'text-sm leading-relaxed p-2 rounded-lg bg-red-100 text-red-900 ml-8 border border-red-200 space-y-2';
+
+        const words = pron && pron.detailResult && pron.detailResult.Words;
+        const transcriptHtml = words && words.length ? renderAssessedWords(words) : escapeHtml(text);
+        const scoreBlock = pron ? renderScoreChips(pron) : '';
+
+        row.innerHTML = `
+          <p><strong>You:</strong> ${transcriptHtml}</p>
+          ${scoreBlock}
+        `;
 
         chatWindow.appendChild(row);
         chatWindow.scrollTop = chatWindow.scrollHeight;
@@ -319,62 +406,173 @@
         }
       }
 
-      function initSpeechRecognition() {
-        const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (!SR) {
-          statusEl.textContent = 'Speech recognition not supported in this browser.';
-          recordBtn.disabled = true;
-          stopBtn.disabled = true;
-          return;
+      async function fetchAzureToken(force = false) {
+        if (!force && azureToken && Date.now() < tokenExpiresAt - 30000) {
+          return { token: azureToken, region: azureRegion };
         }
+        const res = await fetch('/api/azure-token', { method: 'POST' });
+        if (!res.ok) {
+          let detail = `${res.status}`;
+          try {
+            const data = await res.json();
+            if (data && data.error) detail = data.error;
+          } catch (_) {}
+          throw new Error(detail);
+        }
+        const data = await res.json();
+        azureToken = data.token;
+        azureRegion = data.region;
+        tokenExpiresAt = Date.now() + (Number(data.expiresInSeconds) || 540) * 1000;
+        return { token: azureToken, region: azureRegion };
+      }
 
-        recognition = new SR();
-        recognition.lang = 'en-US';
-        recognition.interimResults = false;
-        recognition.continuous = false;
+      function buildPronunciationConfig(mode, words) {
+        const referenceText = mode === 'word' ? words.join(' ') : '';
+        const enableMiscue = mode === 'word' && referenceText.length > 0;
 
-        recognition.onstart = () => {
-          isRecording = true;
-          statusEl.textContent = 'Listening...';
+        const config = new SpeechSDK.PronunciationAssessmentConfig(
+          referenceText,
+          SpeechSDK.PronunciationAssessmentGradingSystem.HundredMark,
+          SpeechSDK.PronunciationAssessmentGranularity.Phoneme,
+          enableMiscue
+        );
+        config.enableProsodyAssessment = true;
+        return config;
+      }
+
+      function createRecognizer(mode, words) {
+        const speechConfig = SpeechSDK.SpeechConfig.fromAuthorizationToken(azureToken, azureRegion);
+        speechConfig.speechRecognitionLanguage = 'en-US';
+
+        const audioConfig = SpeechSDK.AudioConfig.fromDefaultMicrophoneInput();
+        const recognizer = new SpeechSDK.SpeechRecognizer(speechConfig, audioConfig);
+
+        const pronConfig = buildPronunciationConfig(mode, words);
+        pronConfig.applyTo(recognizer);
+
+        return recognizer;
+      }
+
+      function setRecordingUI(recording) {
+        isRecording = recording;
+        if (recording) {
           recordBtn.classList.remove('from-red-600', 'to-rose-600', 'hover:from-red-700', 'hover:to-rose-700');
           recordBtn.classList.add('from-amber-500', 'to-red-500', 'hover:from-amber-600', 'hover:to-red-600');
           recordBtn.textContent = '🔴 Recording';
-        };
-
-        recognition.onresult = (event) => {
-          const transcript = event.results[0][0].transcript.trim();
-          appendMessage('You', transcript);
-          pushHistory('user', transcript);
-          sendToTutor(transcript);
-        };
-
-        recognition.onerror = (event) => {
-          statusEl.textContent = `Speech error: ${event.error}`;
-        };
-
-        recognition.onend = () => {
-          isRecording = false;
+        } else {
           recordBtn.classList.remove('from-amber-500', 'to-red-500', 'hover:from-amber-600', 'hover:to-red-600');
           recordBtn.classList.add('from-red-600', 'to-rose-600', 'hover:from-red-700', 'hover:to-rose-700');
           recordBtn.textContent = '⏺️ Record';
-        };
+        }
+      }
+
+      async function startRecording() {
+        if (isRecording) return;
+        if (typeof SpeechSDK === 'undefined') {
+          statusEl.textContent = 'Azure Speech SDK failed to load.';
+          return;
+        }
+
+        const mode = modeEl.value;
+        const words =
+          mode === 'word'
+            ? wordListEl.value
+                .split(',')
+                .map((word) => word.trim())
+                .filter(Boolean)
+            : [];
+
+        if (mode === 'word' && words.length === 0) {
+          statusEl.textContent = 'Add target words first (comma-separated).';
+          return;
+        }
+
+        try {
+          await fetchAzureToken();
+        } catch (err) {
+          statusEl.textContent = `Speech token error: ${err.message}`;
+          return;
+        }
+
+        let recognizer;
+        try {
+          recognizer = createRecognizer(mode, words);
+        } catch (err) {
+          statusEl.textContent = `Speech init error: ${err.message}`;
+          return;
+        }
+
+        activeRecognizer = recognizer;
+        setRecordingUI(true);
+        statusEl.textContent =
+          mode === 'word' ? 'Listening — say each target word clearly...' : 'Listening...';
+
+        recognizer.recognizeOnceAsync(
+          (result) => {
+            const wasActive = activeRecognizer === recognizer;
+            activeRecognizer = null;
+            setRecordingUI(false);
+
+            try {
+              if (!wasActive) {
+                return;
+              }
+              if (result.reason === SpeechSDK.ResultReason.RecognizedSpeech && result.text) {
+                let pron = null;
+                try {
+                  pron = SpeechSDK.PronunciationAssessmentResult.fromResult(result);
+                } catch (e) {
+                  console.warn('Pronunciation result unavailable:', e);
+                }
+                appendUserMessage(result.text, pron);
+                pushHistory('user', result.text);
+                sendToTutor(result.text);
+              } else if (result.reason === SpeechSDK.ResultReason.NoMatch) {
+                statusEl.textContent = 'I did not catch that. Try again.';
+              } else if (result.reason === SpeechSDK.ResultReason.Canceled) {
+                const cancellation = SpeechSDK.CancellationDetails.fromResult(result);
+                statusEl.textContent = cancellation.errorDetails
+                  ? `Cancelled: ${cancellation.errorDetails}`
+                  : 'Stopped.';
+              }
+            } finally {
+              recognizer.close();
+            }
+          },
+          (error) => {
+            if (activeRecognizer === recognizer) activeRecognizer = null;
+            setRecordingUI(false);
+            statusEl.textContent = `Recognition error: ${error}`;
+            try {
+              recognizer.close();
+            } catch (_) {}
+          }
+        );
+      }
+
+      function stopRecording() {
+        if (!activeRecognizer) {
+          statusEl.textContent = 'Stopped.';
+          return;
+        }
+        const recognizer = activeRecognizer;
+        activeRecognizer = null;
+        try {
+          recognizer.close();
+        } catch (_) {}
+        setRecordingUI(false);
+        statusEl.textContent = 'Stopped.';
       }
 
       recordBtn.addEventListener('click', () => {
-        if (!recognition) return;
         if (isRecording) {
-          recognition.stop();
-          return;
+          stopRecording();
+        } else {
+          startRecording();
         }
-        recognition.start();
       });
 
-      stopBtn.addEventListener('click', () => {
-        if (recognition && isRecording) {
-          recognition.stop();
-          statusEl.textContent = 'Stopped.';
-        }
-      });
+      stopBtn.addEventListener('click', stopRecording);
 
       speakToggle.addEventListener('click', () => {
         voiceEnabled = !voiceEnabled;
@@ -393,17 +591,31 @@
       modeEl.addEventListener('change', () => {
         const isWordMode = modeEl.value === 'word';
         wordListEl.classList.toggle('hidden', !isWordMode);
-        const modeMessage = isWordMode
-          ? 'Word Tutor mode enabled. Add comma-separated words and practice pronunciation.'
-          : 'Conversation mode enabled.';
-        statusEl.textContent = modeMessage;
+        statusEl.textContent = isWordMode
+          ? 'Word Tutor mode: add comma-separated words, then Record and read them aloud.'
+          : 'Conversation mode: speak freely. Pronunciation will be assessed.';
       });
 
-      initSpeechRecognition();
-      const welcomeMessage =
-        `Hello! I am your English tutor. Voice selected for this session: ${sessionVoice}. Press Record and tell me about your day in one or two sentences.`;
-      appendMessage('Tutor', welcomeMessage);
-      pushHistory('assistant', welcomeMessage);
+      async function init() {
+        if (typeof SpeechSDK === 'undefined') {
+          statusEl.textContent = 'Azure Speech SDK failed to load.';
+          return;
+        }
+        try {
+          await fetchAzureToken(true);
+          recordBtn.disabled = false;
+          statusEl.textContent = 'Ready. Press Record and speak.';
+        } catch (err) {
+          statusEl.textContent = `Speech token error: ${err.message}`;
+        }
+
+        const welcomeMessage =
+          `Hello! I am your English tutor. Voice selected for this session: ${sessionVoice}. Press Record and tell me about your day in one or two sentences.`;
+        appendMessage('Tutor', welcomeMessage);
+        pushHistory('assistant', welcomeMessage);
+      }
+
+      init();
     </script>
   </body>
 </html>
