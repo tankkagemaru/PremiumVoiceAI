@@ -57,10 +57,17 @@
     class="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-rose-50 via-red-100 to-rose-200"
   >
     <div
-      class="w-full max-w-md rounded-3xl border border-red-200/70 bg-white/90 shadow-2xl shadow-red-300/40 backdrop-blur overflow-hidden"
+      class="w-full max-w-xl rounded-3xl border border-red-200/70 bg-white/90 shadow-2xl shadow-red-300/40 backdrop-blur overflow-hidden"
     >
       <div class="px-4 py-3 bg-gradient-to-r from-red-600 to-rose-500 text-white flex items-center justify-between">
-        <h1 class="text-sm font-semibold tracking-wide">🎙️ Voice English Tutor</h1>
+        <div class="flex items-center gap-2">
+          <img
+            src="https://drive.google.com/uc?export=download&id=1WBSAezD_na8I7zDovVpaMRhnlE6rmMG_"
+            alt="Company logo"
+            class="h-7 w-7 rounded-md bg-white/90 object-cover p-0.5"
+          />
+          <h1 class="text-sm font-semibold tracking-wide">🎙️ Voice English Tutor</h1>
+        </div>
         <span class="text-xs bg-white/20 px-2 py-1 rounded-full">PoC Widget</span>
       </div>
 
@@ -80,7 +87,7 @@
           </div>
         </div>
 
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2 flex-wrap">
           <label for="level" class="text-sm font-medium text-slate-700">Level:</label>
           <select
             id="level"
@@ -99,23 +106,26 @@
           </button>
         </div>
 
-        <div class="flex items-center gap-2">
-          <label for="voice" class="text-sm font-medium text-slate-700">Voice:</label>
+        <div class="flex items-center gap-2 flex-wrap">
+          <label for="mode" class="text-sm font-medium text-slate-700">Mode:</label>
           <select
-            id="voice"
+            id="mode"
             class="border border-red-200 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-red-400"
           >
-            <option value="alloy">alloy</option>
-            <option value="ash">ash</option>
-            <option value="ballad">ballad</option>
-            <option value="coral">coral</option>
-            <option value="echo">echo</option>
-            <option value="fable">fable</option>
-            <option value="onyx">onyx</option>
-            <option value="nova">nova</option>
-            <option value="sage">sage</option>
-            <option value="shimmer">shimmer</option>
+            <option value="conversation" selected>Conversation</option>
+            <option value="word">Word Speaking Tutor</option>
           </select>
+          <input
+            id="wordList"
+            type="text"
+            placeholder="word list, e.g. thought, through, though"
+            class="hidden flex-1 min-w-52 border border-red-200 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-red-400"
+          />
+        </div>
+        <div id="modeHelp" class="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+          <strong>Conversation mode:</strong> open speaking practice with grammar/vocabulary coaching.
+          <br />
+          <strong>Word Speaking Tutor mode:</strong> focused pronunciation drills on selected words.
         </div>
 
         <div id="status" class="text-xs text-slate-500">Ready. Press Record and speak.</div>
@@ -125,11 +135,11 @@
         <div class="flex items-center gap-2">
           <button
             id="recordBtn"
-            class="flex-1 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-medium py-2 rounded-xl transition"
+            class="flex-[2] min-h-12 whitespace-nowrap bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-semibold py-3 px-4 rounded-xl transition"
           >
             ⏺️ Record
           </button>
-          <button id="stopBtn" class="px-3 py-2 rounded-xl border border-red-200 text-red-700 hover:bg-red-50">
+          <button id="stopBtn" class="px-4 py-3 min-h-12 rounded-xl border border-red-200 text-red-700 hover:bg-red-50">
             Stop
           </button>
         </div>
@@ -142,15 +152,20 @@
       const statusEl = document.getElementById('status');
       const chatWindow = document.getElementById('chatWindow');
       const levelEl = document.getElementById('level');
-      const voiceEl = document.getElementById('voice');
+      const modeEl = document.getElementById('mode');
+      const wordListEl = document.getElementById('wordList');
       const speakToggle = document.getElementById('speakToggle');
       const voiceRing = document.getElementById('voiceRing');
       const voiceBars = document.getElementById('voiceBars');
+      const modeHelpEl = document.getElementById('modeHelp');
+      const AVAILABLE_VOICES = ['alloy', 'ash', 'ballad', 'coral', 'echo', 'fable', 'onyx', 'nova', 'sage', 'shimmer'];
+      const sessionVoice = AVAILABLE_VOICES[Math.floor(Math.random() * AVAILABLE_VOICES.length)];
 
       let recognition;
       let isRecording = false;
       let voiceEnabled = true;
       let currentAudio;
+      let lastSpeechConfidence = null;
       const conversationHistory = [];
 
       function escapeHtml(text) {
@@ -165,20 +180,19 @@
       function formatSimpleMarkdown(text) {
         const escaped = escapeHtml(text);
         return escaped
+          .replace(
+            /\[([^\]]+)\]/g,
+            '<span class="inline-block rounded-md bg-red-50 border border-red-200 px-1.5 py-0.5 text-red-800 font-medium">[$1]</span>'
+          )
           .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
           .replace(/\*(.+?)\*/g, '<em>$1</em>')
           .replace(/\n/g, '<br>');
       }
 
       function splitTutorReply(text) {
-        const leadingCorrection = text.match(/^\s*\[([^\]]+)\]\s*/);
-        if (!leadingCorrection) {
-          return { correction: '', main: text.trim() };
-        }
-
-        const correction = leadingCorrection[1].trim();
-        const main = text.replace(leadingCorrection[0], '').trim();
-        return { correction, main };
+        const allCorrections = [...text.matchAll(/\[([^\]]+)\]/g)].map((match) => match[1].trim()).filter(Boolean);
+        const main = text.replace(/\[[^\]]+\]/g, '').replace(/\s{2,}/g, ' ').trim();
+        return { corrections: allCorrections, main: main || text.trim() };
       }
 
       function appendMessage(role, text) {
@@ -190,11 +204,16 @@
         }`;
 
         if (role === 'Tutor') {
-          const { correction, main } = splitTutorReply(text);
-          const correctionBlock = correction
+          const { corrections, main } = splitTutorReply(text);
+          const correctionBlock = corrections.length
             ? `<section class="rounded-lg border-2 border-red-300 bg-red-50 px-3 py-2 shadow-sm">
                 <p class="text-[11px] font-semibold tracking-wide uppercase text-red-700 mb-1">Correction Note</p>
-                <p class="text-sm italic font-medium text-red-900"><em>${escapeHtml(correction)}</em></p>
+                ${corrections
+                  .map(
+                    (correction) =>
+                      `<p class="text-sm italic font-medium text-red-900"><em>${escapeHtml(correction)}</em></p>`
+                  )
+                  .join('')}
               </section>`
             : '';
           const mainBlock = `<section class="rounded-lg border border-slate-200 bg-white px-3 py-2">
@@ -233,7 +252,7 @@
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               text: cleanText,
-              voice: voiceEl.value
+              voice: sessionVoice
             })
           });
 
@@ -267,6 +286,14 @@
 
       async function sendToTutor(userText) {
         const level = levelEl.value;
+        const mode = modeEl.value;
+        const words =
+          mode === 'word'
+            ? wordListEl.value
+                .split(',')
+                .map((word) => word.trim())
+                .filter(Boolean)
+            : [];
         statusEl.textContent = 'Thinking...';
 
         try {
@@ -276,6 +303,9 @@
             body: JSON.stringify({
               text: userText,
               level,
+              mode,
+              words,
+              speechMeta: { confidence: lastSpeechConfidence },
               history: conversationHistory
             })
           });
@@ -320,9 +350,15 @@
         };
 
         recognition.onresult = (event) => {
-          const transcript = event.results[0][0].transcript.trim();
+          const primaryResult = event.results[0][0];
+          const transcript = primaryResult.transcript.trim();
+          const confidenceValue = typeof primaryResult.confidence === 'number' ? primaryResult.confidence : null;
+          lastSpeechConfidence = confidenceValue;
           appendMessage('You', transcript);
           pushHistory('user', transcript);
+          if (typeof confidenceValue === 'number' && confidenceValue < 0.72) {
+            statusEl.textContent = `Heard with low confidence (${Math.round(confidenceValue * 100)}%). Tutor will verify pronunciation.`;
+          }
           sendToTutor(transcript);
         };
 
@@ -368,9 +404,21 @@
         }
       });
 
+      modeEl.addEventListener('change', () => {
+        const isWordMode = modeEl.value === 'word';
+        wordListEl.classList.toggle('hidden', !isWordMode);
+        modeHelpEl.innerHTML = isWordMode
+          ? '<strong>Word Speaking Tutor mode:</strong> give a short word list and practice pronunciation accuracy, stress, and clear repetition.'
+          : '<strong>Conversation mode:</strong> open speaking practice for fluency, grammar, vocabulary, and natural follow-up.';
+        const modeMessage = isWordMode
+          ? 'Word Tutor mode enabled. Add comma-separated words and practice pronunciation.'
+          : 'Conversation mode enabled.';
+        statusEl.textContent = modeMessage;
+      });
+
       initSpeechRecognition();
       const welcomeMessage =
-        'Hello! I am your English tutor. Press Record and tell me about your day in one or two sentences.';
+        `Hello! I am your English tutor. Voice selected for this session: ${sessionVoice}. Press Record and tell me about your day in one or two sentences.`;
       appendMessage('Tutor', welcomeMessage);
       pushHistory('assistant', welcomeMessage);
     </script>
