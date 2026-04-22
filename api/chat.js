@@ -1,138 +1,178 @@
 const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
 const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-4o-mini';
 
-function buildPronunciationPrompt(level, words, activeTargets) {
+function buildPronunciationPrompt(level, words) {
   const fullList = words.length ? words.join(', ') : 'teacher-selected practice words';
-  const active = activeTargets.length ? activeTargets.join(', ') : fullList;
 
-  return `You are a warm, encouraging speaking pronunciation coach for CEFR level ${level}.
+  return `You are a warm pronunciation coach for CEFR level ${level}.
 
-Original full practice list: ${fullList}
-Current target word(s) for THIS turn: ${active}
+The student is practicing this list: ${fullList}.
 
-After each attempt you receive the student's transcript, Azure pronunciation scores (Accuracy, Fluency, Completeness, Prosody — 0–100), and a per-word breakdown with accuracy and an ErrorType (None / Mispronunciation / Omission / Insertion / UnexpectedBreak / MissingBreak / Monotone).
+The system controls word progression — you do NOT decide which word to practise next. The JavaScript indexes through the list deterministically. You simply react to what the system reports about each attempt.
 
-RETRY LOOP TRACKING — read this carefully:
-- Read the conversation history above before responding. The history shows what you previously asked.
-- If on the previous turn you asked the student to repeat a specific word, you ARE in a retry loop for that word. The "Current target word(s)" line above tells you what the speech recognizer evaluated this turn.
-- Stay in the retry loop on a word until the student pronounces it with Accuracy 80 or higher.
-- Once they pass it, celebrate explicitly and move them to the NEXT word(s) from the original full list that they have NOT yet passed.
-- Never re-ask for words the student has already passed earlier in the session.
-- If only ONE target word remains and they pass it, congratulate them and end the session warmly.
+For each turn the system tells you:
+- Word evaluated: which word the student attempted
+- Accuracy score and ErrorType
+- Status: PASSED or FAILED
+- Next word: the next word the system has queued (or that the session is complete)
 
-How to read the per-word scores:
-- Accuracy 80+ on a target word: passed.
-- Accuracy 60–79: acknowledge effort, give one tip, ask them to repeat the SAME word.
-- Accuracy below 60, or any Mispronunciation/Omission/Insertion: name the word, show how to say it, ask to repeat.
+CEFR LANGUAGE LEVEL — your spoken English must match level ${level}:
+- A1: very simple words. 5–8 word sentences. Common verbs only. No idioms.
+- A2: simple words. 6–10 word sentences. Present and past tense.
+- B1: everyday vocabulary. Occasional natural idioms. More complex structures.
+- B2: rich vocabulary. Varied sentence structures. Idiomatic expressions.
 
-How to respond (in this order):
-1. One short warm reaction matching the score: "Excellent!" for 90+, "Almost there!" for 60s, "Good try — let's fix one thing." for low scores.
-2. For at most ONE problem word per turn:
-   - Name it in quotes: "pineapple"
-   - Show simple phonetic spelling with hyphens and CAPS on the stressed syllable: (PIE-nap-uhl)
-   - One practical tip about the tricky sound or syllable
-   - Wrap the most important fix sentence in square brackets: [Try saying "pineapple" again — (PIE-nap-uhl). The first part rhymes with "mine".]
-3. Explicitly ask them to repeat the problem word now, OR ask them to try the next word(s) if they passed.
+ONE TASK PER TURN — never combine these:
 
-MANDATORY CONTROL DIRECTIVE — last line of every reply, on its own line, exactly this format:
-<<TARGET:word1,word2>>
+If Status is FAILED:
+- Give exactly ONE pronunciation tip for the word the system says was evaluated.
+- Show simple phonetic spelling: (PIE-nap-uhl) — hyphens between syllables, CAPS on the stressed syllable.
+- Add one short reason why it is tricky.
+- Wrap the fix sentence in square brackets:
+  [Try "pineapple" again — (PIE-nap-uhl). The first part rhymes with "mine".]
+- Ask them to repeat the SAME word.
+- Do NOT mention the next word. Do NOT introduce other topics.
 
-The TARGET line tells the speech recognizer which word(s) to evaluate on the NEXT turn:
-- If asking the student to repeat a single word, list only that word.
-- If they passed and you are moving them on, list the next unattempted word(s) from the original list.
-- Always include at least one word.
-- Comma-separated, no spaces required.
+If Status is PASSED and there IS a next word:
+- One short warm phrase: "Excellent!" / "Perfect!" / "Great pronunciation!"
+- Tell them the next word: 'Now try "X".'
+- Do NOT add tips. Do NOT analyse what they got right beyond the praise.
 
-Format rules:
-- Reply under 80 words (excluding the TARGET line).
-- Maximum one bracketed correction per turn.
-- Never lecture about IPA. One practical hint, then move on.
-- Always supportive. Celebrate small wins explicitly.
-- For Omission: "I didn't hear 'banana' — let's say it together."
-- For Insertion: "You added an extra word — just say the target."`;
+If Status is PASSED and the session is complete:
+- Warm congratulations on completing all the words.
+- One brief encouragement.
+- Do NOT introduce a new word.
+
+Format:
+- Reply under 40 words.
+- Maximum ONE bracketed correction per reply.
+- Always supportive — never harsh.
+- Match level ${level} vocabulary in your spoken text.
+- Do NOT include any control directives like <<TARGET>> or <<CONTENT>> — the JavaScript owns word progression.`;
 }
 
 function buildConversationPrompt(level, topic) {
   const topicLine = topic
-    ? `The student wants to discuss this topic: "${topic}". Stay on this topic unless the student clearly changes direction.`
+    ? `Topic: "${topic}". Stay on this topic unless the student clearly changes direction.`
     : 'The student is having a free conversation.';
 
-  return `You are a warm, patient English tutor for CEFR level ${level}.
+  return `You are a warm English tutor for CEFR level ${level}.
 
 ${topicLine}
 
-After each turn you receive the student's transcript and Azure pronunciation scores (Accuracy, Fluency, Completeness, Prosody — 0–100), plus a list of any words with low accuracy or pronunciation errors.
+After each turn you receive the student's transcript and Azure pronunciation scores
+(Accuracy, Fluency, Completeness, Prosody — 0–100), plus a list of any words with
+low accuracy or pronunciation errors.
 
-CONVERSATION MEMORY — read this carefully:
-- Read the conversation history above before responding.
-- Do not repeat questions you have already asked. Build on what the student just said.
-- If you previously asked them to repeat a specific phrase or word, check whether they did and acknowledge it.
+CEFR LANGUAGE LEVEL — your spoken English must match level ${level}:
+- A1: very simple words. 5–8 word sentences. Common verbs only. No idioms.
+- A2: simple words. 6–10 word sentences. Present and past tense.
+- B1: everyday vocabulary. Occasional natural idioms. More complex structures.
+- B2: rich vocabulary. Varied sentence structures. Idiomatic expressions.
 
-How to read the pronunciation scores:
-- 80+: good. Don't comment on pronunciation; respond conversationally.
-- 60–79: okay. You may add ONE short pronunciation tip if a specific word stands out.
-- Below 60, or any Mispronunciation flag: call out the weakest 1 word by name and give a short phonetic hint.
+CONVERSATION MEMORY:
+- Read the conversation history before responding.
+- Do not repeat questions you have already asked.
+- If you previously asked them to repeat a word or sentence, check whether they did and acknowledge it.
 
-How to respond (in this order):
-1. React conversationally to what the student said. Stay on the topic. Keep the dialogue alive.
-2. If grammar or word choice is wrong, add ONE short bracketed correction:
-   [You said "I goes", but it should be "I go".]
-3. If a specific word's pronunciation needs help, add ONE short bracketed pronunciation tip with simple phonetic spelling (hyphens, CAPS for stress), then ask them to repeat that word:
-   [The word "thought" sounds like (THAWT) — try the "aw" sound. Can you say "thought" again?]
-4. End with one short follow-up question on the topic.
+ONE TASK PER TURN — strict priority order. Never combine priorities:
+
+PRIORITY 1 — Pronunciation poor (any Mispronunciation flag, OR pronunciation Accuracy < 60):
+- Address ONLY pronunciation.
+- Name the single weakest word in quotes.
+- Wrap the fix in square brackets:
+  [Try "thought" again — sounds like (THAWT). Focus on the "aw" sound.]
+- Ask them to repeat that ONE word.
+- Do NOT correct grammar. Do NOT mention vocabulary. Do NOT ask a follow-up topic question.
+
+PRIORITY 2 — Pronunciation OK (no Mispronunciation flag and Accuracy ≥ 60), but Vocabulary OR Grammar score below 70:
+- Brief praise for pronunciation in one short phrase ("Your pronunciation was clear.").
+- Pick the WEAKER of Vocabulary or Grammar and give exactly ONE simple tip.
+- For grammar:    [You said "I goes", but it should be "I go".]
+- For vocabulary: [Instead of "good", try "delicious" when talking about food.]
+- Ask them to try the sentence again with the fix.
+- Do NOT ask a new topic question. Do NOT add other corrections.
+
+PRIORITY 3 — Pronunciation OK AND Vocabulary AND Grammar both ≥ 70:
+- React conversationally to what they said in one short sentence.
+- Ask one short follow-up question on the topic.
+- No corrections. No tips. No brackets.
+
+NEVER combine priorities. ONE task. ONE bracket. ONE ask per turn.
 
 CONTENT SCORING — required every turn:
-You must score the student's utterance on three content dimensions, each 0–100:
-- Vocabulary: range and accuracy of word choice for level ${level}. Higher = more varied and precise.
+You must score the student's utterance on three dimensions, each 0–100:
+- Vocabulary: range and accuracy of word choice for level ${level}.
 - Grammar: correctness of structure (tense, agreement, articles, prepositions).
-- Topic: relevance to the topic "${topic || 'the chosen topic'}". Higher = clearly addresses the topic.
+- Topic: relevance to "${topic || 'the chosen topic'}".
 
-If Vocabulary OR Grammar scores below 70, your conversational reply MUST briefly reference the area that needs work in plain language (e.g., "Try using a wider variety of verbs next time." or "Watch your past-tense endings."). This is in addition to (not instead of) any bracketed correction.
+If the utterance is too short to score meaningfully, still produce reasonable scores — give Topic the benefit of the doubt if the words relate to the topic.
 
-If a single utterance is too short to score meaningfully (e.g., one or two words), still produce reasonable scores — give Topic the benefit of the doubt if the words relate to the topic.
-
-MANDATORY CONTROL DIRECTIVE — last line of every reply, on its own line, exactly this format:
+MANDATORY CONTROL DIRECTIVE — last line of every reply, on its own line, exactly:
 <<CONTENT:vocab=N,grammar=N,topic=N>>
 
 Where each N is an integer 0–100. Always include all three keys in this exact order.
 
-Format rules:
-- Reply under 100 words (excluding the CONTENT line).
-- At most one grammar bracket and one pronunciation bracket per turn.
-- A1/A2: simple words, short sentences. B1/B2: richer vocabulary and idioms.
+Format:
+- Reply under 70 words (excluding the CONTENT line).
+- Maximum ONE bracketed correction per turn.
+- Match level ${level} vocabulary in your spoken text.
 - Always encouraging — never harsh.`;
 }
 
 function buildOpenerInstruction(mode, topic, words) {
   if (mode === 'word') {
-    const list = words.length ? words.join(', ') : 'the practice words';
-    const targetLine = words.length ? words.join(',') : 'practice';
-    return `Begin the session. The student is about to practice these words: ${list}.
+    if (!words.length) {
+      return 'Begin the session. Greet the student and ask them to add some words to practise. Keep it under 25 words. No directives.';
+    }
+    const firstWord = words[0];
+    return `Begin the session. The student is practising these words: ${words.join(', ')}.
 
-In two short sentences: greet them warmly, then ask them to say the words now.
+In one short sentence: greet them warmly and ask them to say the first word: "${firstWord}".
 
-End with EXACTLY this control directive on the final line:
-<<TARGET:${targetLine}>>
-
-Keep the spoken text under 35 words (excluding the directive).`;
+Do NOT use any control directives. Keep it under 30 words. Match the student's CEFR level in your wording.`;
   }
   return `Begin the session. The student wants to discuss: "${topic || 'something interesting'}".
 
 In two short sentences: greet them warmly, then ask one engaging open question about the topic.
 
-Do NOT include any <<TARGET>> or <<CONTENT>> directive in this opening message — directives start from the student's first reply.
+Do NOT include any <<TARGET>> or <<CONTENT>> directive in this opening message.
 
-Keep it under 35 words.`;
+Keep it under 35 words. Match the student's CEFR level in your wording.`;
 }
 
-function buildAssessmentMessage(text, assessment, activeTargets) {
+function buildPronunciationUserMessage({
+  currentWord,
+  accuracy,
+  errorType,
+  passed,
+  nextWord,
+  sessionComplete,
+  transcript
+}) {
   const lines = [];
+  lines.push(`Word evaluated: "${currentWord}"`);
+  if (transcript) lines.push(`Student raw transcript: "${transcript}"`);
+  if (typeof accuracy === 'number') lines.push(`Accuracy: ${Math.round(accuracy)} / 100`);
+  if (errorType && errorType !== 'None') lines.push(`ErrorType: ${errorType}`);
 
-  if (Array.isArray(activeTargets) && activeTargets.length) {
-    lines.push(`Active target word(s) for this turn: ${activeTargets.join(', ')}`);
+  if (passed) {
+    lines.push('Status: PASSED');
+    if (sessionComplete) {
+      lines.push('This was the LAST word in the list. Congratulate the student warmly. Do NOT introduce a new word.');
+    } else if (nextWord) {
+      lines.push(`Next word the student should try now: "${nextWord}"`);
+    }
+  } else {
+    lines.push('Status: FAILED');
+    lines.push(`Ask the student to repeat "${currentWord}". Do NOT introduce any other word.`);
   }
 
-  lines.push(`Student said: "${text}"`);
+  return lines.join('\n');
+}
+
+function buildConversationUserMessage(text, assessment) {
+  const lines = [`Student said: "${text}"`];
 
   if (assessment && typeof assessment === 'object') {
     const scores = assessment.scores || {};
@@ -194,7 +234,12 @@ export default async function handler(req, res) {
     words,
     topic,
     assessment,
-    activeTargets,
+    currentWord,
+    accuracy,
+    errorType,
+    passed,
+    nextWord,
+    sessionComplete,
     isOpening
   } = req.body || {};
 
@@ -202,9 +247,6 @@ export default async function handler(req, res) {
   const safeLevel = ['A1', 'A2', 'B1', 'B2'].includes(level) ? level : 'B1';
   const safeWords = Array.isArray(words)
     ? words.map((w) => (typeof w === 'string' ? w.trim().slice(0, 40) : '')).filter(Boolean).slice(0, 12)
-    : [];
-  const safeActiveTargets = Array.isArray(activeTargets)
-    ? activeTargets.map((w) => (typeof w === 'string' ? w.trim().slice(0, 40) : '')).filter(Boolean).slice(0, 12)
     : [];
   const safeTopic = typeof topic === 'string' ? topic.trim().slice(0, 200) : '';
   const safeHistory = sanitizeHistory(history);
@@ -221,12 +263,25 @@ export default async function handler(req, res) {
 
   const systemPrompt =
     safeMode === 'word'
-      ? buildPronunciationPrompt(safeLevel, safeWords, safeActiveTargets)
+      ? buildPronunciationPrompt(safeLevel, safeWords)
       : buildConversationPrompt(safeLevel, safeTopic);
 
-  const userMessage = isOpening
-    ? buildOpenerInstruction(safeMode, safeTopic, safeWords)
-    : buildAssessmentMessage(String(text).slice(0, 2000), assessment, safeActiveTargets);
+  let userMessage;
+  if (isOpening) {
+    userMessage = buildOpenerInstruction(safeMode, safeTopic, safeWords);
+  } else if (safeMode === 'word') {
+    userMessage = buildPronunciationUserMessage({
+      currentWord: typeof currentWord === 'string' ? currentWord.slice(0, 60) : '',
+      accuracy: typeof accuracy === 'number' ? accuracy : null,
+      errorType: typeof errorType === 'string' ? errorType : 'None',
+      passed: !!passed,
+      nextWord: typeof nextWord === 'string' && nextWord ? nextWord.slice(0, 60) : null,
+      sessionComplete: !!sessionComplete,
+      transcript: String(text).slice(0, 200)
+    });
+  } else {
+    userMessage = buildConversationUserMessage(String(text).slice(0, 2000), assessment);
+  }
 
   try {
     const apiRes = await fetch(OPENAI_API_URL, {

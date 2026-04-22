@@ -160,6 +160,11 @@
         border-radius: 999px;
         transition: width 0.5s ease;
       }
+
+      /* Chat window: tall + smooth auto-scroll */
+      #chatWindow {
+        scroll-behavior: smooth;
+      }
     </style>
   </head>
   <body
@@ -229,25 +234,45 @@
             <label for="topic" class="block text-sm font-medium text-slate-700 mb-1.5">
               Enter a topic to discuss
             </label>
-            <input
-              id="topic"
-              type="text"
-              maxlength="200"
-              placeholder="e.g., my favourite hobby, holidays in Malaysia"
-              class="w-full border border-red-200 rounded-lg px-3 py-2 text-base focus:outline-none focus:ring-2 focus:ring-red-400"
-            />
+            <div class="flex gap-2">
+              <input
+                id="topic"
+                type="text"
+                maxlength="200"
+                placeholder="e.g., my favourite hobby, holidays in Malaysia"
+                class="flex-1 border border-red-200 rounded-lg px-3 py-2 text-base focus:outline-none focus:ring-2 focus:ring-red-400"
+              />
+              <button
+                id="topicSuggest"
+                type="button"
+                title="Suggest a random topic for your level"
+                class="shrink-0 rounded-lg border border-red-200 bg-red-50 hover:bg-red-100 active:bg-red-200 text-red-700 px-3 py-2 text-sm font-medium whitespace-nowrap"
+              >
+                🎲 Suggest
+              </button>
+            </div>
           </div>
 
           <div id="wordsGroup" hidden>
             <label for="wordList" class="block text-sm font-medium text-slate-700 mb-1.5">
               Enter words you want to practice
             </label>
-            <input
-              id="wordList"
-              type="text"
-              placeholder="e.g., apple, banana, pineapple"
-              class="w-full border border-red-200 rounded-lg px-3 py-2 text-base focus:outline-none focus:ring-2 focus:ring-red-400"
-            />
+            <div class="flex gap-2">
+              <input
+                id="wordList"
+                type="text"
+                placeholder="e.g., apple, banana, pineapple"
+                class="flex-1 border border-red-200 rounded-lg px-3 py-2 text-base focus:outline-none focus:ring-2 focus:ring-red-400"
+              />
+              <button
+                id="wordSuggest"
+                type="button"
+                title="Suggest random words for your level"
+                class="shrink-0 rounded-lg border border-red-200 bg-red-50 hover:bg-red-100 active:bg-red-200 text-red-700 px-3 py-2 text-sm font-medium whitespace-nowrap"
+              >
+                🎲 Suggest
+              </button>
+            </div>
           </div>
 
           <p id="setupError" class="text-sm text-red-600 hidden"></p>
@@ -289,14 +314,14 @@
 
           <div
             id="chatWindow"
-            class="h-96 overflow-y-auto border border-red-100 rounded-2xl p-4 bg-rose-50/60 space-y-4"
+            class="h-[32rem] overflow-y-auto border border-red-100 rounded-2xl p-4 bg-rose-50/60 space-y-4"
             aria-live="polite"
           ></div>
 
           <div class="flex items-center gap-3">
             <button
               id="recordBtn"
-              class="flex-[2] min-h-14 whitespace-nowrap bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-semibold py-3 px-4 rounded-xl text-base transition disabled:opacity-50"
+              class="flex-[2] min-h-14 whitespace-nowrap bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-semibold py-3 px-4 rounded-xl text-base transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
               ⏺️ Record
             </button>
@@ -312,6 +337,7 @@
     </div>
 
     <script>
+      // ── DOM refs ─────────────────────────────────────────────────────────
       const setupPanel = document.getElementById('setupPanel');
       const chatPanel = document.getElementById('chatPanel');
       const setupError = document.getElementById('setupError');
@@ -330,13 +356,88 @@
       const topicGroup = document.getElementById('topicGroup');
       const wordsGroup = document.getElementById('wordsGroup');
       const wordListEl = document.getElementById('wordList');
+      const topicSuggestBtn = document.getElementById('topicSuggest');
+      const wordSuggestBtn = document.getElementById('wordSuggest');
       const speakToggle = document.getElementById('speakToggle');
       const voiceRing = document.getElementById('voiceRing');
       const voiceBars = document.getElementById('voiceBars');
 
+      // ── Constants ────────────────────────────────────────────────────────
+      const PASS_THRESHOLD = 80;
+
       const AVAILABLE_VOICES = ['alloy', 'ash', 'ballad', 'coral', 'echo', 'fable', 'onyx', 'nova', 'sage', 'shimmer'];
       const sessionVoice = AVAILABLE_VOICES[Math.floor(Math.random() * AVAILABLE_VOICES.length)];
 
+      const SUGGESTIONS = {
+        conversation: {
+          A1: [
+            'My family',
+            'My favourite food',
+            'My pet',
+            'My school',
+            'Things I do every day'
+          ],
+          A2: [
+            'My daily routine',
+            'Ordering food at a restaurant',
+            'A trip I took last summer',
+            'My weekend plans',
+            'My favourite movie or TV show'
+          ],
+          B1: [
+            'The benefits of learning a new language',
+            'A memorable holiday I had',
+            'Pros and cons of social media',
+            'My dream job',
+            'A book that changed how I think'
+          ],
+          B2: [
+            'How technology is changing the way we communicate',
+            'The role of art in society',
+            'Cultural traditions worth preserving',
+            'Why some people prefer city life over rural life',
+            'The ethics of artificial intelligence'
+          ]
+        },
+        word: {
+          A1: [
+            'apple, banana, orange',
+            'cat, dog, bird',
+            'red, blue, green',
+            'one, two, three',
+            'happy, sad, tired'
+          ],
+          A2: [
+            'breakfast, lunch, dinner',
+            'doctor, teacher, engineer',
+            'kitchen, bedroom, bathroom',
+            'shirt, trousers, shoes',
+            'morning, afternoon, evening'
+          ],
+          B1: [
+            'thought, through, though',
+            'weather, whether, wither',
+            'comfortable, vegetable, chocolate',
+            'necessary, separate, definitely',
+            'rhythm, schedule, restaurant'
+          ],
+          B2: [
+            'entrepreneur, hierarchy, miscellaneous',
+            'phenomenon, conscience, accommodation',
+            'specifically, particularly, occasionally',
+            'bourgeois, naive, rendezvous',
+            'hyperbole, euphemism, onomatopoeia'
+          ]
+        }
+      };
+
+      function getRandomSuggestion(category, level) {
+        const list = SUGGESTIONS[category]?.[level] || SUGGESTIONS[category]?.['B1'] || [];
+        if (!list.length) return '';
+        return list[Math.floor(Math.random() * list.length)];
+      }
+
+      // ── State ────────────────────────────────────────────────────────────
       let azureToken = null;
       let azureRegion = null;
       let tokenExpiresAt = 0;
@@ -345,10 +446,49 @@
       let voiceEnabled = true;
       let currentAudio;
       let sessionConfig = null;
-      let currentTargetWords = [];
+      let currentWordIndex = 0;
       let lastUserMessageRow = null;
       const conversationHistory = [];
 
+      // ── Word index helpers (Pronunciation mode) ──────────────────────────
+      function getCurrentTargetWord() {
+        if (sessionConfig?.mode !== 'word') return null;
+        if (currentWordIndex >= sessionConfig.words.length) return null;
+        return sessionConfig.words[currentWordIndex];
+      }
+
+      function getNextTargetWord() {
+        if (sessionConfig?.mode !== 'word') return null;
+        const i = currentWordIndex + 1;
+        if (i >= sessionConfig.words.length) return null;
+        return sessionConfig.words[i];
+      }
+
+      function advanceWord() {
+        currentWordIndex += 1;
+        updateTargetIndicator();
+        updateRecordButtonState();
+      }
+
+      function isSessionComplete() {
+        return sessionConfig?.mode === 'word' && currentWordIndex >= sessionConfig.words.length;
+      }
+
+      function evaluateWordAttempt(pron, targetWord) {
+        if (!pron?.detailResult?.Words || !targetWord) {
+          return { passed: false, accuracy: null, errorType: 'NoMatch' };
+        }
+        const lc = targetWord.toLowerCase();
+        const match = pron.detailResult.Words.find((w) => (w.Word || '').toLowerCase() === lc);
+        if (!match) return { passed: false, accuracy: null, errorType: 'NoMatch' };
+        const a = match.PronunciationAssessment || {};
+        const errorType = a.ErrorType || 'None';
+        const accuracy = typeof a.AccuracyScore === 'number' ? a.AccuracyScore : null;
+        const passed = errorType === 'None' && typeof accuracy === 'number' && accuracy >= PASS_THRESHOLD;
+        return { passed, accuracy, errorType };
+      }
+
+      // ── Text formatting ──────────────────────────────────────────────────
       function escapeHtml(text) {
         return String(text)
           .replaceAll('&', '&amp;')
@@ -376,17 +516,10 @@
         return { corrections: allCorrections, main: main || text.trim() };
       }
 
-      // ── Directive parsing ────────────────────────────────────────────────
+      // ── Directive parsing (CONTENT only — JS owns word progression) ─────
       function extractDirectives(text) {
         let cleaned = text;
-        let targets = null;
         let content = null;
-
-        const targetMatch = cleaned.match(/<<\s*TARGET\s*:\s*([^>]+?)\s*>>/i);
-        if (targetMatch) {
-          targets = targetMatch[1].split(',').map((w) => w.trim()).filter(Boolean);
-          cleaned = cleaned.replace(targetMatch[0], '');
-        }
 
         const contentMatch = cleaned.match(/<<\s*CONTENT\s*:\s*([^>]+?)\s*>>/i);
         if (contentMatch) {
@@ -404,8 +537,11 @@
           cleaned = cleaned.replace(contentMatch[0], '');
         }
 
+        // Strip any stray TARGET directive that the model might emit out of habit
+        cleaned = cleaned.replace(/<<\s*TARGET\s*:[^>]+>>/gi, '');
+
         cleaned = cleaned.replace(/\n{3,}/g, '\n\n').trim();
-        return { targets, content, cleaned };
+        return { content, cleaned };
       }
 
       // ── Score visualization helpers ──────────────────────────────────────
@@ -495,7 +631,6 @@
         `;
       }
 
-      // ── Word-level transcript rendering (Section A) ──────────────────────
       function wordClassFor(errorType, score) {
         switch (errorType) {
           case 'Mispronunciation':
@@ -537,6 +672,10 @@
       }
 
       // ── Message rendering ────────────────────────────────────────────────
+      function scrollChatToBottom() {
+        chatWindow.scrollTop = chatWindow.scrollHeight;
+      }
+
       function appendTutorMessage(text) {
         const row = document.createElement('div');
         row.className = 'rounded-2xl bg-white border border-red-100 mr-8 p-4 space-y-3 shadow-sm';
@@ -559,7 +698,7 @@
         row.innerHTML = `${correctionBlock}${mainBlock}`;
 
         chatWindow.appendChild(row);
-        chatWindow.scrollTop = chatWindow.scrollHeight;
+        scrollChatToBottom();
       }
 
       function appendUserMessage(text, pron) {
@@ -580,13 +719,14 @@
 
         const sectionB = pron ? renderPronunciationDashboard(pron) : '';
 
-        // Section C placeholder for content scores (filled later in Speaking mode)
-        const sectionCWrapper = `<div data-content-placeholder></div>`;
+        // Section C placeholder — only Speaking mode populates it later
+        const sectionCWrapper =
+          sessionConfig?.mode === 'conversation' ? `<div data-content-placeholder></div>` : '';
 
         row.innerHTML = `${sectionA}${sectionB}${sectionCWrapper}`;
 
         chatWindow.appendChild(row);
-        chatWindow.scrollTop = chatWindow.scrollHeight;
+        scrollChatToBottom();
         lastUserMessageRow = row;
       }
 
@@ -595,7 +735,10 @@
         const placeholder = lastUserMessageRow.querySelector('[data-content-placeholder]');
         if (!placeholder) return;
         const html = renderContentDashboard(content);
-        if (html) placeholder.outerHTML = html;
+        if (html) {
+          placeholder.outerHTML = html;
+          scrollChatToBottom();
+        }
       }
 
       function setVoiceAnimation(isSpeaking) {
@@ -611,24 +754,31 @@
         }
       }
 
-      // ── State helpers ────────────────────────────────────────────────────
-      function getActiveTargets() {
-        if (currentTargetWords.length) return currentTargetWords;
-        return sessionConfig?.words || [];
-      }
-
+      // ── UI helpers ───────────────────────────────────────────────────────
       function updateTargetIndicator() {
         if (!sessionConfig || sessionConfig.mode !== 'word') {
           targetIndicator.classList.add('hidden');
           return;
         }
-        const targets = getActiveTargets();
-        if (!targets.length) {
-          targetIndicator.classList.add('hidden');
+        const total = sessionConfig.words.length;
+        if (currentWordIndex >= total) {
+          targetIndicator.textContent = `Session complete · ${total} of ${total} words`;
+          targetIndicator.classList.remove('hidden');
           return;
         }
-        targetIndicator.textContent = `Practising: ${targets.join(', ')}`;
+        const current = sessionConfig.words[currentWordIndex];
+        targetIndicator.textContent = `Word ${currentWordIndex + 1} of ${total}: ${current}`;
         targetIndicator.classList.remove('hidden');
+      }
+
+      function updateRecordButtonState() {
+        if (sessionConfig?.mode === 'word' && isSessionComplete()) {
+          recordBtn.disabled = true;
+          recordBtn.title = 'Session complete. Click "New Session" to start again.';
+        } else {
+          recordBtn.disabled = false;
+          recordBtn.title = '';
+        }
       }
 
       // ── TTS ──────────────────────────────────────────────────────────────
@@ -672,7 +822,7 @@
         }
       }
 
-      // ── Assessment summarization for the LLM ─────────────────────────────
+      // ── Assessment summarization (for Speaking mode user message) ────────
       function summarizeAssessment(pron) {
         if (!pron) return null;
         const scores = {};
@@ -715,40 +865,41 @@
           mode: sessionConfig.mode,
           topic: sessionConfig.topic,
           words: sessionConfig.words,
-          activeTargets: getActiveTargets(),
           history: []
         });
       }
 
-      async function sendToTutor(userText, assessment) {
-        statusEl.textContent = 'Thinking...';
-        try {
-          const reply = await callChat({
-            text: userText,
-            level: sessionConfig.level,
-            mode: sessionConfig.mode,
-            topic: sessionConfig.topic,
-            words: sessionConfig.words,
-            activeTargets: getActiveTargets(),
-            assessment,
-            history: conversationHistory
-          });
-          handleTutorReply(reply);
-        } catch (err) {
-          console.error(err);
-          statusEl.textContent = 'Error contacting tutor API.';
-          appendTutorMessage(`Connection/API error: ${err.message}`);
-        }
+      async function sendConversationTurn(userText, assessment) {
+        return callChat({
+          text: userText,
+          level: sessionConfig.level,
+          mode: 'conversation',
+          topic: sessionConfig.topic,
+          assessment,
+          history: conversationHistory
+        });
+      }
+
+      async function sendPronunciationTurn(userText, attempt) {
+        return callChat({
+          text: userText,
+          level: sessionConfig.level,
+          mode: 'word',
+          words: sessionConfig.words,
+          currentWord: attempt.currentWord,
+          accuracy: attempt.accuracy,
+          errorType: attempt.errorType,
+          passed: attempt.passed,
+          nextWord: attempt.nextWord,
+          sessionComplete: attempt.sessionComplete,
+          history: conversationHistory
+        });
       }
 
       function handleTutorReply(rawReply, { isOpener = false } = {}) {
         const safeReply = rawReply || 'Sorry, I could not generate a response.';
-        const { targets, content, cleaned } = extractDirectives(safeReply);
+        const { content, cleaned } = extractDirectives(safeReply);
 
-        if (targets && targets.length) {
-          currentTargetWords = targets;
-          updateTargetIndicator();
-        }
         if (content && !isOpener) {
           attachContentScores(content);
         }
@@ -757,8 +908,9 @@
         appendTutorMessage(display);
         pushHistory('assistant', display);
         speakText(display);
-
-        statusEl.textContent = 'Ready. Press Record and speak.';
+        statusEl.textContent = isSessionComplete()
+          ? 'Session complete. Press "New Session" to start again.'
+          : 'Ready. Press Record and speak.';
       }
 
       // ── Azure Speech ─────────────────────────────────────────────────────
@@ -782,8 +934,7 @@
         return { token: azureToken, region: azureRegion };
       }
 
-      function buildPronunciationConfig(mode, referenceWords) {
-        const referenceText = mode === 'word' ? referenceWords.join(' ') : '';
+      function buildPronunciationConfig(mode, referenceText) {
         const enableMiscue = mode === 'word' && referenceText.length > 0;
 
         const config = new SpeechSDK.PronunciationAssessmentConfig(
@@ -796,12 +947,12 @@
         return config;
       }
 
-      function createRecognizer(mode, referenceWords) {
+      function createRecognizer(mode, referenceText) {
         const speechConfig = SpeechSDK.SpeechConfig.fromAuthorizationToken(azureToken, azureRegion);
         speechConfig.speechRecognitionLanguage = 'en-US';
         const audioConfig = SpeechSDK.AudioConfig.fromDefaultMicrophoneInput();
         const recognizer = new SpeechSDK.SpeechRecognizer(speechConfig, audioConfig);
-        const pronConfig = buildPronunciationConfig(mode, referenceWords);
+        const pronConfig = buildPronunciationConfig(mode, referenceText);
         pronConfig.applyTo(recognizer);
         return recognizer;
       }
@@ -825,6 +976,10 @@
           statusEl.textContent = 'Azure Speech SDK failed to load.';
           return;
         }
+        if (sessionConfig.mode === 'word' && isSessionComplete()) {
+          statusEl.textContent = 'Session complete. Press "New Session" to start again.';
+          return;
+        }
 
         try {
           await fetchAzureToken();
@@ -833,12 +988,12 @@
           return;
         }
 
-        const referenceWords =
-          sessionConfig.mode === 'word' ? getActiveTargets() : [];
+        const referenceText =
+          sessionConfig.mode === 'word' ? (getCurrentTargetWord() || '') : '';
 
         let recognizer;
         try {
-          recognizer = createRecognizer(sessionConfig.mode, referenceWords);
+          recognizer = createRecognizer(sessionConfig.mode, referenceText);
         } catch (err) {
           statusEl.textContent = `Speech init error: ${err.message}`;
           return;
@@ -848,7 +1003,7 @@
         setRecordingUI(true);
         statusEl.textContent =
           sessionConfig.mode === 'word'
-            ? `Listening — say: ${referenceWords.join(', ')}`
+            ? `Listening — say: "${referenceText}"`
             : 'Listening...';
 
         recognizer.recognizeOnceAsync(
@@ -866,9 +1021,7 @@
                 } catch (e) {
                   console.warn('Pronunciation result unavailable:', e);
                 }
-                appendUserMessage(result.text, pron);
-                pushHistory('user', result.text);
-                sendToTutor(result.text, summarizeAssessment(pron));
+                handleRecognitionResult(result.text, pron);
               } else if (result.reason === SpeechSDK.ResultReason.NoMatch) {
                 statusEl.textContent = 'I did not catch that. Try again.';
               } else if (result.reason === SpeechSDK.ResultReason.Canceled) {
@@ -888,6 +1041,46 @@
             } catch (_) {}
           }
         );
+      }
+
+      function handleRecognitionResult(text, pron) {
+        // Display the user bubble first (Section A + Section B)
+        appendUserMessage(text, pron);
+        pushHistory('user', text);
+        statusEl.textContent = 'Thinking...';
+
+        if (sessionConfig.mode === 'word') {
+          const targetWord = getCurrentTargetWord();
+          const evaluation = evaluateWordAttempt(pron, targetWord);
+
+          // JS owns the index — increment BEFORE sending to AI so nextWord is correct
+          if (evaluation.passed) advanceWord();
+
+          const attempt = {
+            currentWord: targetWord || '',
+            accuracy: evaluation.accuracy,
+            errorType: evaluation.errorType,
+            passed: evaluation.passed,
+            nextWord: evaluation.passed ? getCurrentTargetWord() : null,
+            sessionComplete: evaluation.passed && isSessionComplete()
+          };
+
+          sendPronunciationTurn(text, attempt)
+            .then((reply) => handleTutorReply(reply))
+            .catch((err) => {
+              console.error(err);
+              statusEl.textContent = 'Error contacting tutor API.';
+              appendTutorMessage(`Connection/API error: ${err.message}`);
+            });
+        } else {
+          sendConversationTurn(text, summarizeAssessment(pron))
+            .then((reply) => handleTutorReply(reply))
+            .catch((err) => {
+              console.error(err);
+              statusEl.textContent = 'Error contacting tutor API.';
+              appendTutorMessage(`Connection/API error: ${err.message}`);
+            });
+        }
       }
 
       function stopRecording() {
@@ -935,12 +1128,14 @@
 
         showSetupError('');
         sessionConfig = { mode, level, topic, words };
-        currentTargetWords = mode === 'word' ? [...words] : [];
+        currentWordIndex = 0;
+        lastUserMessageRow = null;
 
         const labelDetail = mode === 'word' ? `Words: ${words.join(', ')}` : `Topic: ${topic}`;
         const modeLabel = mode === 'word' ? 'Pronunciation' : 'Speaking';
         sessionLabel.textContent = `${modeLabel} · ${level} · ${labelDetail}`;
         updateTargetIndicator();
+        updateRecordButtonState();
 
         setupPanel.hidden = true;
         chatPanel.hidden = false;
@@ -966,13 +1161,15 @@
         conversationHistory.length = 0;
         chatWindow.innerHTML = '';
         sessionConfig = null;
-        currentTargetWords = [];
+        currentWordIndex = 0;
         lastUserMessageRow = null;
 
         chatPanel.hidden = true;
         setupPanel.hidden = false;
         showSetupError('');
         targetIndicator.classList.add('hidden');
+        recordBtn.disabled = false;
+        recordBtn.title = '';
         setupStatus.textContent = 'Ready. Configure your session.';
       }
 
@@ -981,6 +1178,16 @@
         const isWord = modeEl.value === 'word';
         topicGroup.hidden = isWord;
         wordsGroup.hidden = !isWord;
+        showSetupError('');
+      });
+
+      topicSuggestBtn.addEventListener('click', () => {
+        topicEl.value = getRandomSuggestion('conversation', levelEl.value);
+        showSetupError('');
+      });
+
+      wordSuggestBtn.addEventListener('click', () => {
+        wordListEl.value = getRandomSuggestion('word', levelEl.value);
         showSetupError('');
       });
 
