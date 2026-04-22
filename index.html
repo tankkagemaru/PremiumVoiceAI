@@ -88,72 +88,140 @@
           </div>
         </div>
 
-        <div class="flex items-center gap-2 flex-wrap">
-          <label for="level" class="text-sm font-medium text-slate-700">Level:</label>
-          <select
-            id="level"
-            class="border border-red-200 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-red-400"
-          >
-            <option value="A1">A1</option>
-            <option value="A2">A2</option>
-            <option value="B1" selected>B1</option>
-            <option value="B2">B2</option>
-          </select>
+        <!-- SETUP PANEL -->
+        <section id="setupPanel" class="space-y-3">
+          <h2 class="text-sm font-semibold text-slate-700">Set up your session</h2>
+
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label for="mode" class="block text-xs font-medium text-slate-600 mb-1">Mode</label>
+              <select
+                id="mode"
+                class="w-full border border-red-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-400"
+              >
+                <option value="conversation" selected>Speaking (Conversation)</option>
+                <option value="word">Pronunciation Practice</option>
+              </select>
+            </div>
+            <div>
+              <label for="level" class="block text-xs font-medium text-slate-600 mb-1">Level</label>
+              <select
+                id="level"
+                class="w-full border border-red-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-400"
+              >
+                <option value="A1">A1</option>
+                <option value="A2">A2</option>
+                <option value="B1" selected>B1</option>
+                <option value="B2">B2</option>
+              </select>
+            </div>
+          </div>
+
+          <div id="topicGroup">
+            <label for="topic" class="block text-xs font-medium text-slate-600 mb-1">
+              Enter a topic to discuss
+            </label>
+            <input
+              id="topic"
+              type="text"
+              maxlength="200"
+              placeholder="e.g., my favourite hobby, holidays in Malaysia"
+              class="w-full border border-red-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-400"
+            />
+          </div>
+
+          <div id="wordsGroup" hidden>
+            <label for="wordList" class="block text-xs font-medium text-slate-600 mb-1">
+              Enter words you want to practice
+            </label>
+            <input
+              id="wordList"
+              type="text"
+              placeholder="e.g., apple, banana, pineapple"
+              class="w-full border border-red-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-400"
+            />
+          </div>
+
+          <p id="setupError" class="text-xs text-red-600 hidden"></p>
+          <p id="setupStatus" class="text-xs text-slate-500">Loading speech service...</p>
+
           <button
-            id="speakToggle"
-            class="ml-auto text-xs rounded-lg px-3 py-1.5 bg-red-100 text-red-800 hover:bg-red-200"
-          >
-            Voice On
-          </button>
-        </div>
-
-        <div class="flex items-center gap-2 flex-wrap">
-          <label for="mode" class="text-sm font-medium text-slate-700">Mode:</label>
-          <select
-            id="mode"
-            class="border border-red-200 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-red-400"
-          >
-            <option value="conversation" selected>Conversation</option>
-            <option value="word">Word Speaking Tutor</option>
-          </select>
-          <input
-            id="wordList"
-            type="text"
-            placeholder="word list, e.g. thought, through, though"
-            class="hidden flex-1 min-w-52 border border-red-200 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-red-400"
-          />
-        </div>
-
-        <div id="status" class="text-xs text-slate-500">Loading speech service...</div>
-
-        <div id="chatWindow" class="h-72 overflow-y-auto border border-red-100 rounded-xl p-3 bg-rose-50/70 space-y-3" aria-live="polite"></div>
-
-        <div class="flex items-center gap-2">
-          <button
-            id="recordBtn"
+            id="startSessionBtn"
             disabled
-            class="flex-[2] min-h-12 whitespace-nowrap bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-semibold py-3 px-4 rounded-xl transition disabled:opacity-50 disabled:cursor-not-allowed"
+            class="w-full min-h-11 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-semibold py-2.5 px-4 rounded-xl transition disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            ⏺️ Record
+            Start Session →
           </button>
-          <button id="stopBtn" class="px-4 py-3 min-h-12 rounded-xl border border-red-200 text-red-700 hover:bg-red-50">
-            Stop
-          </button>
-        </div>
+        </section>
+
+        <!-- CHAT PANEL -->
+        <section id="chatPanel" hidden class="space-y-3">
+          <div class="flex items-center justify-between gap-2 rounded-lg bg-red-50 border border-red-100 px-3 py-2">
+            <div id="sessionLabel" class="text-xs text-red-900 font-medium truncate"></div>
+            <div class="flex items-center gap-2 shrink-0">
+              <button
+                id="speakToggle"
+                class="text-xs rounded-lg px-2.5 py-1 bg-red-100 text-red-800 hover:bg-red-200"
+              >
+                Voice On
+              </button>
+              <button
+                id="resetBtn"
+                class="text-xs rounded-lg px-2.5 py-1 bg-slate-100 text-slate-700 hover:bg-slate-200"
+              >
+                New Session
+              </button>
+            </div>
+          </div>
+
+          <div id="status" class="text-xs text-slate-500">Ready. Press Record and speak.</div>
+
+          <div
+            id="chatWindow"
+            class="h-72 overflow-y-auto border border-red-100 rounded-xl p-3 bg-rose-50/70 space-y-3"
+            aria-live="polite"
+          ></div>
+
+          <div class="flex items-center gap-2">
+            <button
+              id="recordBtn"
+              class="flex-[2] min-h-12 whitespace-nowrap bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-semibold py-3 px-4 rounded-xl transition disabled:opacity-50"
+            >
+              ⏺️ Record
+            </button>
+            <button
+              id="stopBtn"
+              class="px-4 py-3 min-h-12 rounded-xl border border-red-200 text-red-700 hover:bg-red-50"
+            >
+              Stop
+            </button>
+          </div>
+        </section>
       </div>
     </div>
 
     <script>
+      const setupPanel = document.getElementById('setupPanel');
+      const chatPanel = document.getElementById('chatPanel');
+      const setupError = document.getElementById('setupError');
+      const setupStatus = document.getElementById('setupStatus');
+      const startSessionBtn = document.getElementById('startSessionBtn');
+      const sessionLabel = document.getElementById('sessionLabel');
+      const resetBtn = document.getElementById('resetBtn');
       const recordBtn = document.getElementById('recordBtn');
       const stopBtn = document.getElementById('stopBtn');
       const statusEl = document.getElementById('status');
       const chatWindow = document.getElementById('chatWindow');
       const levelEl = document.getElementById('level');
       const modeEl = document.getElementById('mode');
+      const topicEl = document.getElementById('topic');
+      const topicGroup = document.getElementById('topicGroup');
+      const wordsGroup = document.getElementById('wordsGroup');
       const wordListEl = document.getElementById('wordList');
       const speakToggle = document.getElementById('speakToggle');
       const voiceRing = document.getElementById('voiceRing');
       const voiceBars = document.getElementById('voiceBars');
+
       const AVAILABLE_VOICES = ['alloy', 'ash', 'ballad', 'coral', 'echo', 'fable', 'onyx', 'nova', 'sage', 'shimmer'];
       const sessionVoice = AVAILABLE_VOICES[Math.floor(Math.random() * AVAILABLE_VOICES.length)];
 
@@ -164,6 +232,7 @@
       let isRecording = false;
       let voiceEnabled = true;
       let currentAudio;
+      let sessionConfig = null;
       const conversationHistory = [];
 
       function escapeHtml(text) {
@@ -188,39 +257,31 @@
       }
 
       function splitTutorReply(text) {
-        const allCorrections = [...text.matchAll(/\[([^\]]+)\]/g)].map((match) => match[1].trim()).filter(Boolean);
+        const allCorrections = [...text.matchAll(/\[([^\]]+)\]/g)].map((m) => m[1].trim()).filter(Boolean);
         const main = text.replace(/\[[^\]]+\]/g, '').replace(/\s{2,}/g, ' ').trim();
         return { corrections: allCorrections, main: main || text.trim() };
       }
 
-      function appendMessage(role, text) {
+      function appendTutorMessage(text) {
         const row = document.createElement('div');
-        row.className = `text-sm leading-relaxed p-2 rounded-lg ${
-          role === 'You'
-            ? 'bg-red-100 text-red-900 ml-8 border border-red-200'
-            : 'bg-white border border-red-100 mr-8 space-y-2'
-        }`;
+        row.className = 'text-sm leading-relaxed p-2 rounded-lg bg-white border border-red-100 mr-8 space-y-2';
 
-        if (role === 'Tutor') {
-          const { corrections, main } = splitTutorReply(text);
-          const correctionBlock = corrections.length
-            ? `<section class="rounded-lg border-2 border-red-300 bg-red-50 px-3 py-2 shadow-sm">
-                <p class="text-[11px] font-semibold tracking-wide uppercase text-red-700 mb-1">Correction Note</p>
-                ${corrections
-                  .map(
-                    (correction) =>
-                      `<p class="text-sm italic font-medium text-red-900"><em>${escapeHtml(correction)}</em></p>`
-                  )
-                  .join('')}
-              </section>`
-            : '';
-          const mainBlock = `<section class="rounded-lg border border-slate-200 bg-white px-3 py-2">
-              <p><strong>Tutor:</strong> ${formatSimpleMarkdown(main || text)}</p>
-            </section>`;
-          row.innerHTML = `${correctionBlock}${mainBlock}`;
-        } else {
-          row.innerHTML = `<strong>${role}:</strong> ${escapeHtml(text)}`;
-        }
+        const { corrections, main } = splitTutorReply(text);
+        const correctionBlock = corrections.length
+          ? `<section class="rounded-lg border-2 border-red-300 bg-red-50 px-3 py-2 shadow-sm">
+              <p class="text-[11px] font-semibold tracking-wide uppercase text-red-700 mb-1">Correction Note</p>
+              ${corrections
+                .map(
+                  (c) =>
+                    `<p class="text-sm italic font-medium text-red-900"><em>${escapeHtml(c)}</em></p>`
+                )
+                .join('')}
+            </section>`
+          : '';
+        const mainBlock = `<section class="rounded-lg border border-slate-200 bg-white px-3 py-2">
+            <p><strong>Tutor:</strong> ${formatSimpleMarkdown(main || text)}</p>
+          </section>`;
+        row.innerHTML = `${correctionBlock}${mainBlock}`;
 
         chatWindow.appendChild(row);
         chatWindow.scrollTop = chatWindow.scrollHeight;
@@ -252,9 +313,9 @@
         return words
           .map((w) => {
             const word = escapeHtml(w.Word || '');
-            const assessment = w.PronunciationAssessment || {};
-            const errorType = assessment.ErrorType || 'None';
-            const score = typeof assessment.AccuracyScore === 'number' ? assessment.AccuracyScore : null;
+            const a = w.PronunciationAssessment || {};
+            const errorType = a.ErrorType || 'None';
+            const score = typeof a.AccuracyScore === 'number' ? a.AccuracyScore : null;
             const cls = wordClassFor(errorType, score);
             const titleParts = [];
             if (score !== null) titleParts.push(`Accuracy ${Math.round(score)}`);
@@ -266,28 +327,30 @@
       }
 
       function scoreChipClass(value) {
-        if (value >= 80) return 'bg-green-100 text-green-800';
-        if (value >= 60) return 'bg-amber-100 text-amber-800';
-        return 'bg-red-200 text-red-900';
+        if (value >= 80) return 'bg-green-100 text-green-800 border-green-200';
+        if (value >= 60) return 'bg-amber-100 text-amber-800 border-amber-200';
+        return 'bg-red-200 text-red-900 border-red-300';
       }
 
       function renderScoreChips(pron) {
         const entries = [
-          ['Acc', pron.accuracyScore],
-          ['Flu', pron.fluencyScore],
-          ['Comp', pron.completenessScore],
-          ['Pros', pron.prosodyScore]
+          ['ACC', pron.accuracyScore, 'Accuracy'],
+          ['FLU', pron.fluencyScore, 'Fluency'],
+          ['COMP', pron.completenessScore, 'Completeness'],
+          ['PROS', pron.prosodyScore, 'Prosody']
         ];
         const chips = entries
           .filter(([, value]) => typeof value === 'number' && !Number.isNaN(value))
           .map(
-            ([label, value]) =>
-              `<span class="text-[10px] font-semibold uppercase tracking-wide rounded px-1.5 py-0.5 ${scoreChipClass(
+            ([label, value, full]) =>
+              `<span class="text-xs font-bold uppercase tracking-wide rounded-md border px-2 py-1 ${scoreChipClass(
                 value
-              )}">${label} ${Math.round(value)}</span>`
+              )}" title="${full} ${Math.round(value)} / 100">
+                ${label} <span class="ml-0.5">${Math.round(value)}</span>
+              </span>`
           );
         if (!chips.length) return '';
-        return `<div class="flex flex-wrap gap-1">${chips.join('')}</div>`;
+        return `<div class="flex flex-wrap gap-1.5 pt-1">${chips.join('')}</div>`;
       }
 
       function appendUserMessage(text, pron) {
@@ -330,10 +393,7 @@
           const res = await fetch('/api/tts', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              text: cleanText,
-              voice: sessionVoice
-            })
+            body: JSON.stringify({ text: cleanText, voice: sessionVoice })
           });
 
           if (!res.ok) {
@@ -360,49 +420,76 @@
         } catch (err) {
           setVoiceAnimation(false);
           console.error('TTS error:', err);
-          appendMessage('Tutor', `[Audio unavailable: ${err.message}]`);
+          appendTutorMessage(`[Audio unavailable: ${err.message}]`);
         }
       }
 
-      async function sendToTutor(userText) {
-        const level = levelEl.value;
-        const mode = modeEl.value;
-        const words =
-          mode === 'word'
-            ? wordListEl.value
-                .split(',')
-                .map((word) => word.trim())
-                .filter(Boolean)
-            : [];
+      function summarizeAssessment(pron) {
+        if (!pron) return null;
+        const scores = {};
+        if (typeof pron.accuracyScore === 'number') scores.accuracy = pron.accuracyScore;
+        if (typeof pron.fluencyScore === 'number') scores.fluency = pron.fluencyScore;
+        if (typeof pron.completenessScore === 'number') scores.completeness = pron.completenessScore;
+        if (typeof pron.prosodyScore === 'number') scores.prosody = pron.prosodyScore;
+
+        const detailWords = pron.detailResult && pron.detailResult.Words;
+        const words = Array.isArray(detailWords)
+          ? detailWords.map((w) => ({
+              word: w.Word || '',
+              errorType: w.PronunciationAssessment?.ErrorType || 'None',
+              accuracy:
+                typeof w.PronunciationAssessment?.AccuracyScore === 'number'
+                  ? w.PronunciationAssessment.AccuracyScore
+                  : null
+            }))
+          : [];
+
+        return { scores, words };
+      }
+
+      async function callChat(payload) {
+        const res = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || `Server returned ${res.status}`);
+        return data.reply || '';
+      }
+
+      async function fetchOpener() {
+        return callChat({
+          isOpening: true,
+          level: sessionConfig.level,
+          mode: sessionConfig.mode,
+          topic: sessionConfig.topic,
+          words: sessionConfig.words,
+          history: []
+        });
+      }
+
+      async function sendToTutor(userText, assessment) {
         statusEl.textContent = 'Thinking...';
-
         try {
-          const res = await fetch('/api/chat', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              text: userText,
-              level,
-              mode,
-              words,
-              history: conversationHistory
-            })
+          const reply = await callChat({
+            text: userText,
+            level: sessionConfig.level,
+            mode: sessionConfig.mode,
+            topic: sessionConfig.topic,
+            words: sessionConfig.words,
+            assessment,
+            history: conversationHistory
           });
-
-          const data = await res.json();
-          if (!res.ok) {
-            throw new Error(data.error || `Server returned ${res.status}`);
-          }
-
-          const tutorReply = data.reply || 'Sorry, I could not generate a response.';
-          appendMessage('Tutor', tutorReply);
+          const tutorReply = reply || 'Sorry, I could not generate a response.';
+          appendTutorMessage(tutorReply);
           pushHistory('assistant', tutorReply);
           await speakText(tutorReply);
           statusEl.textContent = 'Ready. Press Record and speak.';
         } catch (err) {
           console.error(err);
           statusEl.textContent = 'Error contacting tutor API.';
-          appendMessage('Tutor', `Connection/API error: ${err.message}`);
+          appendTutorMessage(`Connection/API error: ${err.message}`);
         }
       }
 
@@ -443,13 +530,10 @@
       function createRecognizer(mode, words) {
         const speechConfig = SpeechSDK.SpeechConfig.fromAuthorizationToken(azureToken, azureRegion);
         speechConfig.speechRecognitionLanguage = 'en-US';
-
         const audioConfig = SpeechSDK.AudioConfig.fromDefaultMicrophoneInput();
         const recognizer = new SpeechSDK.SpeechRecognizer(speechConfig, audioConfig);
-
         const pronConfig = buildPronunciationConfig(mode, words);
         pronConfig.applyTo(recognizer);
-
         return recognizer;
       }
 
@@ -467,23 +551,9 @@
       }
 
       async function startRecording() {
-        if (isRecording) return;
+        if (isRecording || !sessionConfig) return;
         if (typeof SpeechSDK === 'undefined') {
           statusEl.textContent = 'Azure Speech SDK failed to load.';
-          return;
-        }
-
-        const mode = modeEl.value;
-        const words =
-          mode === 'word'
-            ? wordListEl.value
-                .split(',')
-                .map((word) => word.trim())
-                .filter(Boolean)
-            : [];
-
-        if (mode === 'word' && words.length === 0) {
-          statusEl.textContent = 'Add target words first (comma-separated).';
           return;
         }
 
@@ -496,7 +566,7 @@
 
         let recognizer;
         try {
-          recognizer = createRecognizer(mode, words);
+          recognizer = createRecognizer(sessionConfig.mode, sessionConfig.words);
         } catch (err) {
           statusEl.textContent = `Speech init error: ${err.message}`;
           return;
@@ -505,7 +575,9 @@
         activeRecognizer = recognizer;
         setRecordingUI(true);
         statusEl.textContent =
-          mode === 'word' ? 'Listening — say each target word clearly...' : 'Listening...';
+          sessionConfig.mode === 'word'
+            ? 'Listening — say each target word clearly...'
+            : 'Listening...';
 
         recognizer.recognizeOnceAsync(
           (result) => {
@@ -514,9 +586,7 @@
             setRecordingUI(false);
 
             try {
-              if (!wasActive) {
-                return;
-              }
+              if (!wasActive) return;
               if (result.reason === SpeechSDK.ResultReason.RecognizedSpeech && result.text) {
                 let pron = null;
                 try {
@@ -526,14 +596,12 @@
                 }
                 appendUserMessage(result.text, pron);
                 pushHistory('user', result.text);
-                sendToTutor(result.text);
+                sendToTutor(result.text, summarizeAssessment(pron));
               } else if (result.reason === SpeechSDK.ResultReason.NoMatch) {
                 statusEl.textContent = 'I did not catch that. Try again.';
               } else if (result.reason === SpeechSDK.ResultReason.Canceled) {
-                const cancellation = SpeechSDK.CancellationDetails.fromResult(result);
-                statusEl.textContent = cancellation.errorDetails
-                  ? `Cancelled: ${cancellation.errorDetails}`
-                  : 'Stopped.';
+                const c = SpeechSDK.CancellationDetails.fromResult(result);
+                statusEl.textContent = c.errorDetails ? `Cancelled: ${c.errorDetails}` : 'Stopped.';
               }
             } finally {
               recognizer.close();
@@ -564,12 +632,92 @@
         statusEl.textContent = 'Stopped.';
       }
 
-      recordBtn.addEventListener('click', () => {
-        if (isRecording) {
-          stopRecording();
+      function showSetupError(msg) {
+        if (!msg) {
+          setupError.textContent = '';
+          setupError.classList.add('hidden');
         } else {
-          startRecording();
+          setupError.textContent = msg;
+          setupError.classList.remove('hidden');
         }
+      }
+
+      async function startSession() {
+        const mode = modeEl.value;
+        const level = levelEl.value;
+        const topic = topicEl.value.trim();
+        const words = wordListEl.value
+          .split(',')
+          .map((w) => w.trim())
+          .filter(Boolean);
+
+        if (mode === 'conversation' && !topic) {
+          showSetupError('Please enter a topic to discuss.');
+          return;
+        }
+        if (mode === 'word' && words.length === 0) {
+          showSetupError('Please enter at least one word to practise.');
+          return;
+        }
+
+        showSetupError('');
+        sessionConfig = { mode, level, topic, words };
+
+        const labelDetail =
+          mode === 'word' ? `Words: ${words.join(', ')}` : `Topic: ${topic}`;
+        const modeLabel = mode === 'word' ? 'Pronunciation' : 'Speaking';
+        sessionLabel.textContent = `${modeLabel} · ${level} · ${labelDetail}`;
+
+        setupPanel.hidden = true;
+        chatPanel.hidden = false;
+        statusEl.textContent = 'Starting session...';
+
+        try {
+          const opener = await fetchOpener();
+          const safeOpener = opener || 'Hello! Let\'s begin.';
+          appendTutorMessage(safeOpener);
+          pushHistory('assistant', safeOpener);
+          await speakText(safeOpener);
+          statusEl.textContent = 'Ready. Press Record and speak.';
+        } catch (err) {
+          appendTutorMessage(`Could not start session: ${err.message}`);
+          statusEl.textContent = 'Setup error.';
+        }
+      }
+
+      function resetSession() {
+        if (currentAudio) {
+          currentAudio.pause();
+          currentAudio.currentTime = 0;
+          setVoiceAnimation(false);
+        }
+        if (activeRecognizer) stopRecording();
+
+        conversationHistory.length = 0;
+        chatWindow.innerHTML = '';
+        sessionConfig = null;
+
+        chatPanel.hidden = true;
+        setupPanel.hidden = false;
+        showSetupError('');
+        setupStatus.textContent = 'Ready. Configure your session.';
+      }
+
+      // Event wiring
+
+      modeEl.addEventListener('change', () => {
+        const isWord = modeEl.value === 'word';
+        topicGroup.hidden = isWord;
+        wordsGroup.hidden = !isWord;
+        showSetupError('');
+      });
+
+      startSessionBtn.addEventListener('click', startSession);
+      resetBtn.addEventListener('click', resetSession);
+
+      recordBtn.addEventListener('click', () => {
+        if (isRecording) stopRecording();
+        else startRecording();
       });
 
       stopBtn.addEventListener('click', stopRecording);
@@ -578,8 +726,8 @@
         voiceEnabled = !voiceEnabled;
         speakToggle.textContent = voiceEnabled ? 'Voice On' : 'Voice Off';
         speakToggle.className = voiceEnabled
-          ? 'ml-auto text-xs rounded-lg px-3 py-1.5 bg-red-100 text-red-800 hover:bg-red-200'
-          : 'ml-auto text-xs rounded-lg px-3 py-1.5 bg-slate-200 text-slate-700 hover:bg-slate-300';
+          ? 'text-xs rounded-lg px-2.5 py-1 bg-red-100 text-red-800 hover:bg-red-200'
+          : 'text-xs rounded-lg px-2.5 py-1 bg-slate-200 text-slate-700 hover:bg-slate-300';
 
         if (!voiceEnabled && currentAudio) {
           currentAudio.pause();
@@ -588,31 +736,18 @@
         }
       });
 
-      modeEl.addEventListener('change', () => {
-        const isWordMode = modeEl.value === 'word';
-        wordListEl.classList.toggle('hidden', !isWordMode);
-        statusEl.textContent = isWordMode
-          ? 'Word Tutor mode: add comma-separated words, then Record and read them aloud.'
-          : 'Conversation mode: speak freely. Pronunciation will be assessed.';
-      });
-
       async function init() {
         if (typeof SpeechSDK === 'undefined') {
-          statusEl.textContent = 'Azure Speech SDK failed to load.';
+          setupStatus.textContent = 'Azure Speech SDK failed to load.';
           return;
         }
         try {
           await fetchAzureToken(true);
-          recordBtn.disabled = false;
-          statusEl.textContent = 'Ready. Press Record and speak.';
+          startSessionBtn.disabled = false;
+          setupStatus.textContent = `Speech service ready. Tutor voice: ${sessionVoice}.`;
         } catch (err) {
-          statusEl.textContent = `Speech token error: ${err.message}`;
+          setupStatus.textContent = `Speech token error: ${err.message}`;
         }
-
-        const welcomeMessage =
-          `Hello! I am your English tutor. Voice selected for this session: ${sessionVoice}. Press Record and tell me about your day in one or two sentences.`;
-        appendMessage('Tutor', welcomeMessage);
-        pushHistory('assistant', welcomeMessage);
       }
 
       init();
