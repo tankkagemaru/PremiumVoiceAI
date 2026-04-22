@@ -52,62 +52,170 @@
       .speaking .voice-bar:nth-child(4) {
         animation: equalize 0.65s ease-in-out infinite;
       }
+
+      /* Pronunciation assessment word styling */
+      .word-mispronounced {
+        background: #fef08a;
+        color: #78350f;
+        padding: 0 4px;
+        border-radius: 4px;
+        text-decoration: underline wavy #ca8a04;
+        text-underline-offset: 3px;
+      }
+
+      .word-omitted {
+        background: #e5e7eb;
+        color: #374151;
+        padding: 0 4px;
+        border-radius: 4px;
+        text-decoration: line-through;
+        font-style: italic;
+      }
+
+      .word-inserted {
+        background: #ede9fe;
+        color: #5b21b6;
+        padding: 0 4px;
+        border-radius: 4px;
+        font-style: italic;
+      }
+
+      .word-low {
+        background: #fde68a;
+        color: #78350f;
+        padding: 0 4px;
+        border-radius: 4px;
+      }
+
+      .word-mid {
+        background: #fef3c7;
+        color: #92400e;
+        padding: 0 4px;
+        border-radius: 4px;
+      }
+
+      .word-prosody {
+        background: #dbeafe;
+        color: #1e40af;
+        padding: 0 4px;
+        border-radius: 4px;
+      }
+
+      /* Circular score ring */
+      .score-ring {
+        --size: 116px;
+        --thickness: 12px;
+        --score: 0;
+        --ring-color: #16a34a;
+        width: var(--size);
+        height: var(--size);
+        border-radius: 50%;
+        background: conic-gradient(var(--ring-color) calc(var(--score) * 1%), #e5e7eb 0);
+        display: grid;
+        place-items: center;
+        position: relative;
+        flex-shrink: 0;
+      }
+
+      .score-ring::after {
+        content: '';
+        position: absolute;
+        inset: var(--thickness);
+        border-radius: 50%;
+        background: white;
+      }
+
+      .score-ring-content {
+        position: relative;
+        z-index: 1;
+        text-align: center;
+        line-height: 1;
+      }
+
+      .score-ring-value {
+        font-size: 2rem;
+        font-weight: 800;
+        color: #0f172a;
+      }
+
+      .score-ring-max {
+        font-size: 0.7rem;
+        color: #64748b;
+        margin-top: 4px;
+        font-weight: 600;
+      }
+
+      /* Horizontal score bars */
+      .score-bar-track {
+        height: 10px;
+        background: #e5e7eb;
+        border-radius: 999px;
+        overflow: hidden;
+      }
+
+      .score-bar-fill {
+        height: 100%;
+        width: calc(var(--score) * 1%);
+        background: var(--bar-color, #16a34a);
+        border-radius: 999px;
+        transition: width 0.5s ease;
+      }
     </style>
   </head>
   <body
-    class="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-rose-50 via-red-100 to-rose-200"
+    class="min-h-screen flex items-center justify-center p-4 sm:p-6 bg-gradient-to-br from-rose-50 via-red-100 to-rose-200 text-base text-slate-800"
   >
     <div
-      class="w-full max-w-xl rounded-3xl border border-red-200/70 bg-white/90 shadow-2xl shadow-red-300/40 backdrop-blur overflow-hidden"
+      class="w-full max-w-2xl rounded-3xl border border-red-200/70 bg-white/95 shadow-2xl shadow-red-300/40 backdrop-blur overflow-hidden"
     >
-      <div class="px-4 py-3 bg-gradient-to-r from-red-600 to-rose-500 text-white flex items-center justify-between">
-        <div class="flex items-center gap-2">
+      <div class="px-6 py-4 bg-gradient-to-r from-red-600 to-rose-500 text-white flex items-center justify-between">
+        <div class="flex items-center gap-3">
           <img
             src="https://drive.google.com/uc?export=download&id=1WBSAezD_na8I7zDovVpaMRhnlE6rmMG_"
             alt="Company logo"
-            class="h-7 w-7 rounded-md bg-white/90 object-cover p-0.5"
+            class="h-9 w-9 rounded-md bg-white/90 object-cover p-0.5"
           />
-          <h1 class="text-sm font-semibold tracking-wide">🎙️ Voice English Tutor</h1>
+          <h1 class="text-base font-semibold tracking-wide">🎙️ Voice English Tutor</h1>
         </div>
-        <span class="text-xs bg-white/20 px-2 py-1 rounded-full">PoC Widget</span>
+        <span class="text-xs bg-white/20 px-3 py-1 rounded-full">PoC Widget</span>
       </div>
 
-      <div class="p-4 space-y-4">
-        <div class="flex items-center justify-between rounded-2xl bg-red-50 border border-red-100 px-3 py-2">
+      <div class="p-6 space-y-5">
+        <div class="flex items-center justify-between rounded-2xl bg-red-50 border border-red-100 px-4 py-3">
           <div>
             <p class="text-xs uppercase tracking-wide text-red-500 font-semibold">Tutor Voice</p>
-            <p class="text-sm text-red-900 font-medium">Live audio feedback</p>
+            <p class="text-base text-red-900 font-medium">Live audio feedback</p>
           </div>
-          <div id="voiceRing" class="voice-ring rounded-full bg-red-100 p-2.5 border border-red-200">
-            <div id="voiceBars" class="flex items-end gap-0.5 h-5">
-              <span class="voice-bar block h-2 w-1 rounded bg-red-500"></span>
-              <span class="voice-bar block h-4 w-1 rounded bg-red-500"></span>
-              <span class="voice-bar block h-3 w-1 rounded bg-red-500"></span>
-              <span class="voice-bar block h-5 w-1 rounded bg-red-500"></span>
+          <div id="voiceRing" class="voice-ring rounded-full bg-red-100 p-3 border border-red-200">
+            <div id="voiceBars" class="flex items-end gap-1 h-6">
+              <span class="voice-bar block h-2 w-1.5 rounded bg-red-500"></span>
+              <span class="voice-bar block h-5 w-1.5 rounded bg-red-500"></span>
+              <span class="voice-bar block h-3 w-1.5 rounded bg-red-500"></span>
+              <span class="voice-bar block h-6 w-1.5 rounded bg-red-500"></span>
             </div>
           </div>
         </div>
 
         <!-- SETUP PANEL -->
-        <section id="setupPanel" class="space-y-3">
-          <h2 class="text-sm font-semibold text-slate-700">Set up your session</h2>
+        <section id="setupPanel" class="space-y-4">
+          <h2 class="text-lg font-semibold text-slate-800">Set up your session</h2>
 
-          <div class="grid grid-cols-2 gap-2">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label for="mode" class="block text-xs font-medium text-slate-600 mb-1">Mode</label>
+              <label for="mode" class="block text-sm font-medium text-slate-700 mb-1.5">Mode</label>
               <select
                 id="mode"
-                class="w-full border border-red-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-400"
+                class="w-full border border-red-200 rounded-lg px-3 py-2 text-base focus:outline-none focus:ring-2 focus:ring-red-400"
               >
                 <option value="conversation" selected>Speaking (Conversation)</option>
                 <option value="word">Pronunciation Practice</option>
               </select>
             </div>
             <div>
-              <label for="level" class="block text-xs font-medium text-slate-600 mb-1">Level</label>
+              <label for="level" class="block text-sm font-medium text-slate-700 mb-1.5">Level</label>
               <select
                 id="level"
-                class="w-full border border-red-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-400"
+                class="w-full border border-red-200 rounded-lg px-3 py-2 text-base focus:outline-none focus:ring-2 focus:ring-red-400"
               >
                 <option value="A1">A1</option>
                 <option value="A2">A2</option>
@@ -118,7 +226,7 @@
           </div>
 
           <div id="topicGroup">
-            <label for="topic" class="block text-xs font-medium text-slate-600 mb-1">
+            <label for="topic" class="block text-sm font-medium text-slate-700 mb-1.5">
               Enter a topic to discuss
             </label>
             <input
@@ -126,72 +234,75 @@
               type="text"
               maxlength="200"
               placeholder="e.g., my favourite hobby, holidays in Malaysia"
-              class="w-full border border-red-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-400"
+              class="w-full border border-red-200 rounded-lg px-3 py-2 text-base focus:outline-none focus:ring-2 focus:ring-red-400"
             />
           </div>
 
           <div id="wordsGroup" hidden>
-            <label for="wordList" class="block text-xs font-medium text-slate-600 mb-1">
+            <label for="wordList" class="block text-sm font-medium text-slate-700 mb-1.5">
               Enter words you want to practice
             </label>
             <input
               id="wordList"
               type="text"
               placeholder="e.g., apple, banana, pineapple"
-              class="w-full border border-red-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-400"
+              class="w-full border border-red-200 rounded-lg px-3 py-2 text-base focus:outline-none focus:ring-2 focus:ring-red-400"
             />
           </div>
 
-          <p id="setupError" class="text-xs text-red-600 hidden"></p>
-          <p id="setupStatus" class="text-xs text-slate-500">Loading speech service...</p>
+          <p id="setupError" class="text-sm text-red-600 hidden"></p>
+          <p id="setupStatus" class="text-sm text-slate-500">Loading speech service...</p>
 
           <button
             id="startSessionBtn"
             disabled
-            class="w-full min-h-11 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-semibold py-2.5 px-4 rounded-xl transition disabled:opacity-50 disabled:cursor-not-allowed"
+            class="w-full min-h-12 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-semibold py-3 px-4 rounded-xl text-base transition disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Start Session →
           </button>
         </section>
 
         <!-- CHAT PANEL -->
-        <section id="chatPanel" hidden class="space-y-3">
-          <div class="flex items-center justify-between gap-2 rounded-lg bg-red-50 border border-red-100 px-3 py-2">
-            <div id="sessionLabel" class="text-xs text-red-900 font-medium truncate"></div>
+        <section id="chatPanel" hidden class="space-y-4">
+          <div class="flex items-center justify-between gap-3 rounded-xl bg-red-50 border border-red-100 px-4 py-3">
+            <div class="min-w-0">
+              <div id="sessionLabel" class="text-sm text-red-900 font-semibold truncate"></div>
+              <div id="targetIndicator" class="text-xs text-red-700 mt-0.5 hidden"></div>
+            </div>
             <div class="flex items-center gap-2 shrink-0">
               <button
                 id="speakToggle"
-                class="text-xs rounded-lg px-2.5 py-1 bg-red-100 text-red-800 hover:bg-red-200"
+                class="text-sm rounded-lg px-3 py-1.5 bg-red-100 text-red-800 hover:bg-red-200"
               >
                 Voice On
               </button>
               <button
                 id="resetBtn"
-                class="text-xs rounded-lg px-2.5 py-1 bg-slate-100 text-slate-700 hover:bg-slate-200"
+                class="text-sm rounded-lg px-3 py-1.5 bg-slate-100 text-slate-700 hover:bg-slate-200"
               >
                 New Session
               </button>
             </div>
           </div>
 
-          <div id="status" class="text-xs text-slate-500">Ready. Press Record and speak.</div>
+          <div id="status" class="text-sm text-slate-500">Ready. Press Record and speak.</div>
 
           <div
             id="chatWindow"
-            class="h-72 overflow-y-auto border border-red-100 rounded-xl p-3 bg-rose-50/70 space-y-3"
+            class="h-96 overflow-y-auto border border-red-100 rounded-2xl p-4 bg-rose-50/60 space-y-4"
             aria-live="polite"
           ></div>
 
-          <div class="flex items-center gap-2">
+          <div class="flex items-center gap-3">
             <button
               id="recordBtn"
-              class="flex-[2] min-h-12 whitespace-nowrap bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-semibold py-3 px-4 rounded-xl transition disabled:opacity-50"
+              class="flex-[2] min-h-14 whitespace-nowrap bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-semibold py-3 px-4 rounded-xl text-base transition disabled:opacity-50"
             >
               ⏺️ Record
             </button>
             <button
               id="stopBtn"
-              class="px-4 py-3 min-h-12 rounded-xl border border-red-200 text-red-700 hover:bg-red-50"
+              class="px-5 py-3 min-h-14 rounded-xl border border-red-200 text-red-700 hover:bg-red-50 text-base"
             >
               Stop
             </button>
@@ -207,6 +318,7 @@
       const setupStatus = document.getElementById('setupStatus');
       const startSessionBtn = document.getElementById('startSessionBtn');
       const sessionLabel = document.getElementById('sessionLabel');
+      const targetIndicator = document.getElementById('targetIndicator');
       const resetBtn = document.getElementById('resetBtn');
       const recordBtn = document.getElementById('recordBtn');
       const stopBtn = document.getElementById('stopBtn');
@@ -233,6 +345,8 @@
       let voiceEnabled = true;
       let currentAudio;
       let sessionConfig = null;
+      let currentTargetWords = [];
+      let lastUserMessageRow = null;
       const conversationHistory = [];
 
       function escapeHtml(text) {
@@ -249,7 +363,7 @@
         return escaped
           .replace(
             /\[([^\]]+)\]/g,
-            '<span class="inline-block rounded-md bg-red-50 border border-red-200 px-1.5 py-0.5 text-red-800 font-medium">[$1]</span>'
+            '<span class="inline-block rounded-md bg-red-50 border border-red-200 px-2 py-0.5 text-red-800 font-medium">[$1]</span>'
           )
           .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
           .replace(/\*(.+?)\*/g, '<em>$1</em>')
@@ -262,47 +376,142 @@
         return { corrections: allCorrections, main: main || text.trim() };
       }
 
-      function appendTutorMessage(text) {
-        const row = document.createElement('div');
-        row.className = 'text-sm leading-relaxed p-2 rounded-lg bg-white border border-red-100 mr-8 space-y-2';
+      // ── Directive parsing ────────────────────────────────────────────────
+      function extractDirectives(text) {
+        let cleaned = text;
+        let targets = null;
+        let content = null;
 
-        const { corrections, main } = splitTutorReply(text);
-        const correctionBlock = corrections.length
-          ? `<section class="rounded-lg border-2 border-red-300 bg-red-50 px-3 py-2 shadow-sm">
-              <p class="text-[11px] font-semibold tracking-wide uppercase text-red-700 mb-1">Correction Note</p>
-              ${corrections
-                .map(
-                  (c) =>
-                    `<p class="text-sm italic font-medium text-red-900"><em>${escapeHtml(c)}</em></p>`
-                )
-                .join('')}
-            </section>`
-          : '';
-        const mainBlock = `<section class="rounded-lg border border-slate-200 bg-white px-3 py-2">
-            <p><strong>Tutor:</strong> ${formatSimpleMarkdown(main || text)}</p>
-          </section>`;
-        row.innerHTML = `${correctionBlock}${mainBlock}`;
+        const targetMatch = cleaned.match(/<<\s*TARGET\s*:\s*([^>]+?)\s*>>/i);
+        if (targetMatch) {
+          targets = targetMatch[1].split(',').map((w) => w.trim()).filter(Boolean);
+          cleaned = cleaned.replace(targetMatch[0], '');
+        }
 
-        chatWindow.appendChild(row);
-        chatWindow.scrollTop = chatWindow.scrollHeight;
+        const contentMatch = cleaned.match(/<<\s*CONTENT\s*:\s*([^>]+?)\s*>>/i);
+        if (contentMatch) {
+          content = {};
+          for (const part of contentMatch[1].split(',')) {
+            const eq = part.indexOf('=');
+            if (eq < 0) continue;
+            const key = part.slice(0, eq).trim().toLowerCase();
+            const num = Number(part.slice(eq + 1).trim());
+            if (Number.isNaN(num)) continue;
+            if (key === 'vocab' || key === 'vocabulary') content.vocabulary = num;
+            else if (key === 'grammar') content.grammar = num;
+            else if (key === 'topic') content.topic = num;
+          }
+          cleaned = cleaned.replace(contentMatch[0], '');
+        }
+
+        cleaned = cleaned.replace(/\n{3,}/g, '\n\n').trim();
+        return { targets, content, cleaned };
       }
 
+      // ── Score visualization helpers ──────────────────────────────────────
+      function scoreColorHex(value) {
+        if (value >= 80) return '#16a34a';
+        if (value >= 60) return '#f59e0b';
+        return '#dc2626';
+      }
+
+      function renderScoreRing(score) {
+        const safe = Math.max(0, Math.min(100, Math.round(score)));
+        const color = scoreColorHex(safe);
+        return `
+          <div class="score-ring" style="--score: ${safe}; --ring-color: ${color}">
+            <div class="score-ring-content">
+              <div class="score-ring-value">${safe}</div>
+              <div class="score-ring-max">/ 100</div>
+            </div>
+          </div>
+        `;
+      }
+
+      function renderScoreBar(label, value) {
+        const safe = Math.max(0, Math.min(100, Math.round(value)));
+        const color = scoreColorHex(safe);
+        return `
+          <div>
+            <div class="flex items-center justify-between text-sm mb-1">
+              <span class="text-slate-700">${label}</span>
+              <span class="font-semibold text-slate-900">${safe} / 100</span>
+            </div>
+            <div class="score-bar-track">
+              <div class="score-bar-fill" style="--score: ${safe}; --bar-color: ${color}"></div>
+            </div>
+          </div>
+        `;
+      }
+
+      function pickOverallPronunciationScore(pron) {
+        if (typeof pron.pronunciationScore === 'number') return pron.pronunciationScore;
+        const parts = ['accuracyScore', 'fluencyScore', 'completenessScore', 'prosodyScore']
+          .map((k) => pron[k])
+          .filter((v) => typeof v === 'number');
+        if (!parts.length) return 0;
+        return parts.reduce((a, b) => a + b, 0) / parts.length;
+      }
+
+      function renderPronunciationDashboard(pron) {
+        const overall = pickOverallPronunciationScore(pron);
+        const bars = [];
+        if (typeof pron.accuracyScore === 'number') bars.push(renderScoreBar('🎯 Accuracy', pron.accuracyScore));
+        if (typeof pron.fluencyScore === 'number') bars.push(renderScoreBar('🌊 Fluency', pron.fluencyScore));
+        if (typeof pron.completenessScore === 'number') bars.push(renderScoreBar('✅ Completeness', pron.completenessScore));
+        if (typeof pron.prosodyScore === 'number') bars.push(renderScoreBar('🎵 Prosody', pron.prosodyScore));
+
+        return `
+          <div class="rounded-xl bg-white border border-slate-200 p-4">
+            <h3 class="text-sm font-semibold text-slate-700 mb-3 uppercase tracking-wide">Pronunciation Score</h3>
+            <div class="flex flex-col sm:flex-row gap-5 items-center sm:items-start">
+              ${renderScoreRing(overall)}
+              <div class="flex-1 w-full space-y-3">${bars.join('')}</div>
+            </div>
+          </div>
+        `;
+      }
+
+      function renderContentDashboard(content) {
+        const values = ['vocabulary', 'grammar', 'topic']
+          .map((k) => content[k])
+          .filter((v) => typeof v === 'number');
+        if (!values.length) return '';
+        const overall = values.reduce((a, b) => a + b, 0) / values.length;
+
+        const bars = [];
+        if (typeof content.vocabulary === 'number') bars.push(renderScoreBar('📚 Vocabulary', content.vocabulary));
+        if (typeof content.grammar === 'number') bars.push(renderScoreBar('✏️ Grammar', content.grammar));
+        if (typeof content.topic === 'number') bars.push(renderScoreBar('💬 Topic', content.topic));
+
+        return `
+          <div class="rounded-xl bg-white border border-slate-200 p-4">
+            <h3 class="text-sm font-semibold text-slate-700 mb-3 uppercase tracking-wide">Content Score</h3>
+            <div class="flex flex-col sm:flex-row gap-5 items-center sm:items-start">
+              ${renderScoreRing(overall)}
+              <div class="flex-1 w-full space-y-3">${bars.join('')}</div>
+            </div>
+          </div>
+        `;
+      }
+
+      // ── Word-level transcript rendering (Section A) ──────────────────────
       function wordClassFor(errorType, score) {
         switch (errorType) {
           case 'Mispronunciation':
-            return 'rounded px-1 bg-red-200 text-red-900 underline decoration-wavy decoration-red-600';
+            return 'word-mispronounced';
           case 'Omission':
-            return 'rounded px-1 bg-amber-100 text-amber-900 italic line-through';
+            return 'word-omitted';
           case 'Insertion':
-            return 'rounded px-1 bg-purple-100 text-purple-900 italic';
+            return 'word-inserted';
           case 'UnexpectedBreak':
           case 'MissingBreak':
           case 'Monotone':
-            return 'rounded px-1 bg-blue-100 text-blue-900';
+            return 'word-prosody';
           default:
             if (typeof score === 'number') {
-              if (score < 60) return 'rounded px-1 bg-red-100 text-red-800';
-              if (score < 80) return 'rounded px-1 bg-amber-100 text-amber-800';
+              if (score < 60) return 'word-low';
+              if (score < 80) return 'word-mid';
             }
             return '';
         }
@@ -321,54 +530,72 @@
             if (score !== null) titleParts.push(`Accuracy ${Math.round(score)}`);
             if (errorType && errorType !== 'None') titleParts.push(errorType);
             const title = titleParts.length ? ` title="${escapeHtml(titleParts.join(' · '))}"` : '';
-            return `<span class="${cls}"${title}>${word}</span>`;
+            const cssClass = cls ? ` class="${cls}"` : '';
+            return `<span${cssClass}${title}>${word}</span>`;
           })
           .join(' ');
       }
 
-      function scoreChipClass(value) {
-        if (value >= 80) return 'bg-green-100 text-green-800 border-green-200';
-        if (value >= 60) return 'bg-amber-100 text-amber-800 border-amber-200';
-        return 'bg-red-200 text-red-900 border-red-300';
-      }
+      // ── Message rendering ────────────────────────────────────────────────
+      function appendTutorMessage(text) {
+        const row = document.createElement('div');
+        row.className = 'rounded-2xl bg-white border border-red-100 mr-8 p-4 space-y-3 shadow-sm';
 
-      function renderScoreChips(pron) {
-        const entries = [
-          ['ACC', pron.accuracyScore, 'Accuracy'],
-          ['FLU', pron.fluencyScore, 'Fluency'],
-          ['COMP', pron.completenessScore, 'Completeness'],
-          ['PROS', pron.prosodyScore, 'Prosody']
-        ];
-        const chips = entries
-          .filter(([, value]) => typeof value === 'number' && !Number.isNaN(value))
-          .map(
-            ([label, value, full]) =>
-              `<span class="text-xs font-bold uppercase tracking-wide rounded-md border px-2 py-1 ${scoreChipClass(
-                value
-              )}" title="${full} ${Math.round(value)} / 100">
-                ${label} <span class="ml-0.5">${Math.round(value)}</span>
-              </span>`
-          );
-        if (!chips.length) return '';
-        return `<div class="flex flex-wrap gap-1.5 pt-1">${chips.join('')}</div>`;
+        const { corrections, main } = splitTutorReply(text);
+        const correctionBlock = corrections.length
+          ? `<section class="rounded-xl border-2 border-red-300 bg-red-50 px-4 py-3 shadow-sm">
+              <p class="text-xs font-semibold tracking-wide uppercase text-red-700 mb-1.5">Correction Note</p>
+              ${corrections
+                .map(
+                  (c) =>
+                    `<p class="text-base italic font-medium text-red-900"><em>${escapeHtml(c)}</em></p>`
+                )
+                .join('')}
+            </section>`
+          : '';
+        const mainBlock = `<section>
+            <p class="text-base"><strong class="text-red-700">Tutor:</strong> ${formatSimpleMarkdown(main || text)}</p>
+          </section>`;
+        row.innerHTML = `${correctionBlock}${mainBlock}`;
+
+        chatWindow.appendChild(row);
+        chatWindow.scrollTop = chatWindow.scrollHeight;
       }
 
       function appendUserMessage(text, pron) {
         const row = document.createElement('div');
-        row.className =
-          'text-sm leading-relaxed p-2 rounded-lg bg-red-100 text-red-900 ml-8 border border-red-200 space-y-2';
+        row.className = 'rounded-2xl bg-red-50 border border-red-200 ml-8 p-4 space-y-4 shadow-sm';
 
         const words = pron && pron.detailResult && pron.detailResult.Words;
         const transcriptHtml = words && words.length ? renderAssessedWords(words) : escapeHtml(text);
-        const scoreBlock = pron ? renderScoreChips(pron) : '';
 
-        row.innerHTML = `
-          <p><strong>You:</strong> ${transcriptHtml}</p>
-          ${scoreBlock}
+        const sectionA = `
+          <section>
+            <p class="text-xs uppercase tracking-wide text-red-600 font-semibold mb-1.5">You said</p>
+            <div class="text-base leading-relaxed text-slate-900 rounded-lg bg-white border border-slate-200 px-3 py-2">
+              ${transcriptHtml || escapeHtml(text)}
+            </div>
+          </section>
         `;
+
+        const sectionB = pron ? renderPronunciationDashboard(pron) : '';
+
+        // Section C placeholder for content scores (filled later in Speaking mode)
+        const sectionCWrapper = `<div data-content-placeholder></div>`;
+
+        row.innerHTML = `${sectionA}${sectionB}${sectionCWrapper}`;
 
         chatWindow.appendChild(row);
         chatWindow.scrollTop = chatWindow.scrollHeight;
+        lastUserMessageRow = row;
+      }
+
+      function attachContentScores(content) {
+        if (!lastUserMessageRow) return;
+        const placeholder = lastUserMessageRow.querySelector('[data-content-placeholder]');
+        if (!placeholder) return;
+        const html = renderContentDashboard(content);
+        if (html) placeholder.outerHTML = html;
       }
 
       function setVoiceAnimation(isSpeaking) {
@@ -379,11 +606,32 @@
 
       function pushHistory(role, content) {
         conversationHistory.push({ role, content });
-        if (conversationHistory.length > 8) {
-          conversationHistory.splice(0, conversationHistory.length - 8);
+        if (conversationHistory.length > 12) {
+          conversationHistory.splice(0, conversationHistory.length - 12);
         }
       }
 
+      // ── State helpers ────────────────────────────────────────────────────
+      function getActiveTargets() {
+        if (currentTargetWords.length) return currentTargetWords;
+        return sessionConfig?.words || [];
+      }
+
+      function updateTargetIndicator() {
+        if (!sessionConfig || sessionConfig.mode !== 'word') {
+          targetIndicator.classList.add('hidden');
+          return;
+        }
+        const targets = getActiveTargets();
+        if (!targets.length) {
+          targetIndicator.classList.add('hidden');
+          return;
+        }
+        targetIndicator.textContent = `Practising: ${targets.join(', ')}`;
+        targetIndicator.classList.remove('hidden');
+      }
+
+      // ── TTS ──────────────────────────────────────────────────────────────
       async function speakText(text) {
         if (!voiceEnabled) return;
         const cleanText = text.replace(/\[[^\]]*\]/g, '').trim();
@@ -424,6 +672,7 @@
         }
       }
 
+      // ── Assessment summarization for the LLM ─────────────────────────────
       function summarizeAssessment(pron) {
         if (!pron) return null;
         const scores = {};
@@ -447,6 +696,7 @@
         return { scores, words };
       }
 
+      // ── Backend calls ────────────────────────────────────────────────────
       async function callChat(payload) {
         const res = await fetch('/api/chat', {
           method: 'POST',
@@ -465,6 +715,7 @@
           mode: sessionConfig.mode,
           topic: sessionConfig.topic,
           words: sessionConfig.words,
+          activeTargets: getActiveTargets(),
           history: []
         });
       }
@@ -478,14 +729,11 @@
             mode: sessionConfig.mode,
             topic: sessionConfig.topic,
             words: sessionConfig.words,
+            activeTargets: getActiveTargets(),
             assessment,
             history: conversationHistory
           });
-          const tutorReply = reply || 'Sorry, I could not generate a response.';
-          appendTutorMessage(tutorReply);
-          pushHistory('assistant', tutorReply);
-          await speakText(tutorReply);
-          statusEl.textContent = 'Ready. Press Record and speak.';
+          handleTutorReply(reply);
         } catch (err) {
           console.error(err);
           statusEl.textContent = 'Error contacting tutor API.';
@@ -493,6 +741,27 @@
         }
       }
 
+      function handleTutorReply(rawReply, { isOpener = false } = {}) {
+        const safeReply = rawReply || 'Sorry, I could not generate a response.';
+        const { targets, content, cleaned } = extractDirectives(safeReply);
+
+        if (targets && targets.length) {
+          currentTargetWords = targets;
+          updateTargetIndicator();
+        }
+        if (content && !isOpener) {
+          attachContentScores(content);
+        }
+
+        const display = cleaned || safeReply;
+        appendTutorMessage(display);
+        pushHistory('assistant', display);
+        speakText(display);
+
+        statusEl.textContent = 'Ready. Press Record and speak.';
+      }
+
+      // ── Azure Speech ─────────────────────────────────────────────────────
       async function fetchAzureToken(force = false) {
         if (!force && azureToken && Date.now() < tokenExpiresAt - 30000) {
           return { token: azureToken, region: azureRegion };
@@ -513,8 +782,8 @@
         return { token: azureToken, region: azureRegion };
       }
 
-      function buildPronunciationConfig(mode, words) {
-        const referenceText = mode === 'word' ? words.join(' ') : '';
+      function buildPronunciationConfig(mode, referenceWords) {
+        const referenceText = mode === 'word' ? referenceWords.join(' ') : '';
         const enableMiscue = mode === 'word' && referenceText.length > 0;
 
         const config = new SpeechSDK.PronunciationAssessmentConfig(
@@ -527,12 +796,12 @@
         return config;
       }
 
-      function createRecognizer(mode, words) {
+      function createRecognizer(mode, referenceWords) {
         const speechConfig = SpeechSDK.SpeechConfig.fromAuthorizationToken(azureToken, azureRegion);
         speechConfig.speechRecognitionLanguage = 'en-US';
         const audioConfig = SpeechSDK.AudioConfig.fromDefaultMicrophoneInput();
         const recognizer = new SpeechSDK.SpeechRecognizer(speechConfig, audioConfig);
-        const pronConfig = buildPronunciationConfig(mode, words);
+        const pronConfig = buildPronunciationConfig(mode, referenceWords);
         pronConfig.applyTo(recognizer);
         return recognizer;
       }
@@ -564,9 +833,12 @@
           return;
         }
 
+        const referenceWords =
+          sessionConfig.mode === 'word' ? getActiveTargets() : [];
+
         let recognizer;
         try {
-          recognizer = createRecognizer(sessionConfig.mode, sessionConfig.words);
+          recognizer = createRecognizer(sessionConfig.mode, referenceWords);
         } catch (err) {
           statusEl.textContent = `Speech init error: ${err.message}`;
           return;
@@ -576,7 +848,7 @@
         setRecordingUI(true);
         statusEl.textContent =
           sessionConfig.mode === 'word'
-            ? 'Listening — say each target word clearly...'
+            ? `Listening — say: ${referenceWords.join(', ')}`
             : 'Listening...';
 
         recognizer.recognizeOnceAsync(
@@ -632,6 +904,7 @@
         statusEl.textContent = 'Stopped.';
       }
 
+      // ── Setup → session ──────────────────────────────────────────────────
       function showSetupError(msg) {
         if (!msg) {
           setupError.textContent = '';
@@ -662,11 +935,12 @@
 
         showSetupError('');
         sessionConfig = { mode, level, topic, words };
+        currentTargetWords = mode === 'word' ? [...words] : [];
 
-        const labelDetail =
-          mode === 'word' ? `Words: ${words.join(', ')}` : `Topic: ${topic}`;
+        const labelDetail = mode === 'word' ? `Words: ${words.join(', ')}` : `Topic: ${topic}`;
         const modeLabel = mode === 'word' ? 'Pronunciation' : 'Speaking';
         sessionLabel.textContent = `${modeLabel} · ${level} · ${labelDetail}`;
+        updateTargetIndicator();
 
         setupPanel.hidden = true;
         chatPanel.hidden = false;
@@ -674,11 +948,7 @@
 
         try {
           const opener = await fetchOpener();
-          const safeOpener = opener || 'Hello! Let\'s begin.';
-          appendTutorMessage(safeOpener);
-          pushHistory('assistant', safeOpener);
-          await speakText(safeOpener);
-          statusEl.textContent = 'Ready. Press Record and speak.';
+          handleTutorReply(opener || 'Hello! Let\'s begin.', { isOpener: true });
         } catch (err) {
           appendTutorMessage(`Could not start session: ${err.message}`);
           statusEl.textContent = 'Setup error.';
@@ -696,15 +966,17 @@
         conversationHistory.length = 0;
         chatWindow.innerHTML = '';
         sessionConfig = null;
+        currentTargetWords = [];
+        lastUserMessageRow = null;
 
         chatPanel.hidden = true;
         setupPanel.hidden = false;
         showSetupError('');
+        targetIndicator.classList.add('hidden');
         setupStatus.textContent = 'Ready. Configure your session.';
       }
 
-      // Event wiring
-
+      // ── Event wiring ─────────────────────────────────────────────────────
       modeEl.addEventListener('change', () => {
         const isWord = modeEl.value === 'word';
         topicGroup.hidden = isWord;
@@ -726,8 +998,8 @@
         voiceEnabled = !voiceEnabled;
         speakToggle.textContent = voiceEnabled ? 'Voice On' : 'Voice Off';
         speakToggle.className = voiceEnabled
-          ? 'text-xs rounded-lg px-2.5 py-1 bg-red-100 text-red-800 hover:bg-red-200'
-          : 'text-xs rounded-lg px-2.5 py-1 bg-slate-200 text-slate-700 hover:bg-slate-300';
+          ? 'text-sm rounded-lg px-3 py-1.5 bg-red-100 text-red-800 hover:bg-red-200'
+          : 'text-sm rounded-lg px-3 py-1.5 bg-slate-200 text-slate-700 hover:bg-slate-300';
 
         if (!voiceEnabled && currentAudio) {
           currentAudio.pause();
