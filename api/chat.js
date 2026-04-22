@@ -1,7 +1,7 @@
 const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
 const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-4o-mini';
 
-function buildSystemPrompt(level) {
+function buildConversationPrompt(level) {
   return `You are a patient English tutor for CEFR level ${level}.
 
 Core behavior:
@@ -29,6 +29,30 @@ Response constraints:
 - Ask at most one follow-up question.`;
 }
 
+function buildWordTutorPrompt(level, words) {
+  const normalizedWords = words.length ? words.join(', ') : 'teacher-selected simple practice words';
+
+  return `You are a focused speaking pronunciation coach for CEFR level ${level}.
+
+Mode behavior:
+- This is "Word Speaking Tutor" mode, not free conversation mode.
+- Keep the learner focused on saying and repeating target words correctly.
+- Current target words: ${normalizedWords}.
+- In each turn, give 1-3 word targets max.
+- Ask the learner to repeat or say each word in a short sentence.
+- Provide short pronunciation help using plain text syllable hints when useful.
+
+Correction behavior:
+- If the learner made any mistake, begin with one short correction note in square brackets.
+- Example format: [You said "libary", but try "library" (LIE-brair-ee).]
+- If no meaningful error, do not add bracketed text.
+
+Response constraints:
+- Keep each reply under 90 words.
+- Be concise, motivating, and practical.
+- Ask at most one follow-up question.`;
+}
+
 function sanitizeHistory(history) {
   if (!Array.isArray(history)) return [];
 
@@ -48,13 +72,20 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { text, level, history } = req.body || {};
+  const { text, level, history, mode, words } = req.body || {};
 
   if (!text || typeof text !== 'string') {
     return res.status(400).json({ error: 'Missing text input' });
   }
 
   const safeLevel = ['A1', 'A2', 'B1', 'B2'].includes(level) ? level : 'B1';
+  const safeMode = mode === 'word' ? 'word' : 'conversation';
+  const safeWords = Array.isArray(words)
+    ? words
+        .map((item) => (typeof item === 'string' ? item.trim() : ''))
+        .filter(Boolean)
+        .slice(0, 12)
+    : [];
   const safeHistory = sanitizeHistory(history);
   const apiKey = process.env.OPENAI_API_KEY;
 
@@ -75,7 +106,13 @@ export default async function handler(req, res) {
         model: OPENAI_MODEL,
         temperature: 0.6,
         messages: [
-          { role: 'system', content: buildSystemPrompt(safeLevel) },
+          {
+            role: 'system',
+            content:
+              safeMode === 'word'
+                ? buildWordTutorPrompt(safeLevel, safeWords)
+                : buildConversationPrompt(safeLevel)
+          },
           ...safeHistory,
           { role: 'user', content: text }
         ]
